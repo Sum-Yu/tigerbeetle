@@ -52,6 +52,25 @@ export async function createTransferApi(input: {
   await res.json().catch(() => undefined);
 }
 
+export async function topUpAccountApi(input: {
+  creditAccountId: string;
+  amount: string;
+  debitAccountId?: string;
+}): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/topup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to top up account");
+  }
+
+  await res.json().catch(() => undefined);
+}
+
 export async function fetchAccountAndHistoryApi(accountId: string): Promise<{
   accountInfo: AccountSummary;
   transfers: Transfer[];
@@ -71,11 +90,12 @@ export async function fetchAccountAndHistoryApi(accountId: string): Promise<{
   }
 
   const accountInfo = (await accountRes.json()) as AccountSummary;
-  const transfersData = (await transfersRes.json()) as { transfers: Transfer[] };
+  const transfersData = (await transfersRes.json()) as {
+    transfers: Transfer[];
+  };
 
   return {
     accountInfo,
     transfers: transfersData.transfers ?? [],
   };
 }
-

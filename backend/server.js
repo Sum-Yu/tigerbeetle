@@ -22,6 +22,45 @@ const client = createClient({
   replica_addresses: [process.env.TB_ADDRESS || "3000"],
 });
 
+//Create A Bank Account (Provider Account)
+let TREASURY_ACCOUNT_ID = "2142330582467847940723297385933508998";
+
+async function getOrCreateTreasuryAccountId() {
+  if (TREASURY_ACCOUNT_ID) {
+    return TREASURY_ACCOUNT_ID;
+  }
+
+  const account = {
+    id: id(),
+    debits_pending: 0n,
+    debits_posted: 0n,
+    credits_pending: 0n,
+    credits_posted: 0n,
+    user_data_128: 0n,
+    user_data_64: 0n,
+    user_data_32: 0,
+    reserved: 0,
+    ledger: 1,
+    code: 1,
+    flags: AccountFlags.history,
+    timestamp: 0n,
+  };
+
+  const errors = await client.createAccounts([account]);
+  if (errors.length > 0) {
+    console.error("Failed to create treasury account:", errors);
+    throw new Error("Failed to create treasury account");
+  }
+
+  TREASURY_ACCOUNT_ID = account.id.toString();
+  console.log(
+    `Created treasury (bank) account with id=${TREASURY_ACCOUNT_ID}. ` +
+      "You can set TB_TREASURY_ACCOUNT_ID to reuse it persistently.",
+  );
+
+  return TREASURY_ACCOUNT_ID;
+}
+
 function jsonifyBigInts(value) {
   return JSON.parse(
     JSON.stringify(value, (_, v) => (typeof v === "bigint" ? v.toString() : v)),
@@ -116,6 +155,49 @@ app.get("/api/accounts/:id/transfers", async (req, res) => {
   } catch (err) {
     console.error("Error fetching transfers:", err);
     res.status(500).json({ error: "Failed to fetch transfers" });
+  }
+});
+
+// Top up an account from a configured source (e.g. treasury)
+app.post("/api/topup", async (req, res) => {
+  try {
+    const { creditAccountId, amount, debitAccountId } = req.body;
+
+    if (!creditAccountId || !amount) {
+      return res
+        .status(400)
+        .json({ error: "creditAccountId and amount are required" });
+    }
+
+    // Prefer explicitly provided debitAccountId; otherwise use or create a shared treasury account.
+    const configuredDebit =
+      debitAccountId ?? (await getOrCreateTreasuryAccountId());
+
+    const transfer = {
+      id: id(),
+      debit_account_id: BigInt(configuredDebit),
+      credit_account_id: BigInt(creditAccountId),
+      amount: BigInt(amount),
+      pending_id: 0n,
+      user_data_128: 0n,
+      user_data_64: 0n,
+      user_data_32: 0,
+      timeout: 0,
+      ledger: 1,
+      code: 1,
+      flags: 0,
+      timestamp: 0n,
+    };
+
+    const errors = await client.createTransfers([transfer]);
+    if (errors.length > 0) {
+      return res.status(400).json({ errors: jsonifyBigInts(errors) });
+    }
+
+    res.json({ transferId: transfer.id.toString() });
+  } catch (err) {
+    console.error("Error topping up account:", err);
+    res.status(500).json({ error: "Failed to top up account" });
   }
 });
 

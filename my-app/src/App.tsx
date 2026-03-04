@@ -4,16 +4,22 @@ import {
   createAccountApi,
   createTransferApi,
   fetchAccountAndHistoryApi,
+  topUpAccountApi,
   type AccountSummary,
   type Transfer,
 } from "./api/tigerbeetle";
 import CreateAcc from "./components/createAcc";
+import TransferAmount from "./components/transferAmount";
+import TopUpAmount from "./components/topUpAmount";
 
 function App() {
   const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
   const [debitAccountId, setDebitAccountId] = useState("");
   const [creditAccountId, setCreditAccountId] = useState("");
   const [amount, setAmount] = useState("0");
+
+  const [topUpAccountId, setTopUpAccountId] = useState("");
+  const [topUpAmount, setTopUpAmount] = useState("0");
 
   const [lookupAccountId, setLookupAccountId] = useState("");
   const [accountInfo, setAccountInfo] = useState<AccountSummary | null>(null);
@@ -23,6 +29,7 @@ function App() {
 
   // 2142322132939244820262595012401905400
   // 2142322155302171094276862091850845246
+  // 2142833224494385145654821421757722967
 
   async function createAccount() {
     setError(null);
@@ -55,6 +62,25 @@ function App() {
       // Refresh account + transfers for the debit account if it matches lookup
       if (lookupAccountId) {
         void fetchAccountAndHistory(lookupAccountId);
+      }
+    } catch (e: any) {
+      setError(e.message ?? "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function topUpAccount() {
+    setError(null);
+    setLoading(true);
+    try {
+      await topUpAccountApi({
+        creditAccountId: topUpAccountId,
+        amount: topUpAmount,
+      });
+
+      if (lookupAccountId === topUpAccountId && topUpAccountId) {
+        void fetchAccountAndHistory(topUpAccountId);
       }
     } catch (e: any) {
       setError(e.message ?? "Unknown error");
@@ -104,49 +130,25 @@ function App() {
             onCreateAccount={createAccount}
           />
 
-          <div className="tb-card">
-            <h2 className="tb-card-title">Create Transfer</h2>
-            <p className="tb-card-description">
-              Move funds between two accounts in a single transfer.
-            </p>
-            <div className="tb-form">
-              <label className="tb-field">
-                <span className="tb-field-label">Debit Account ID</span>
-                <input
-                  className="tb-input"
-                  type="text"
-                  value={debitAccountId}
-                  onChange={(e) => setDebitAccountId(e.target.value)}
-                />
-              </label>
-              <label className="tb-field">
-                <span className="tb-field-label">Credit Account ID</span>
-                <input
-                  className="tb-input"
-                  type="text"
-                  value={creditAccountId}
-                  onChange={(e) => setCreditAccountId(e.target.value)}
-                />
-              </label>
-              <label className="tb-field">
-                <span className="tb-field-label">Amount</span>
-                <input
-                  className="tb-input"
-                  type="number"
-                  min={0}
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </label>
-              <button
-                className="tb-button tb-button-secondary"
-                onClick={createTransfer}
-                disabled={loading}
-              >
-                {loading ? "Working..." : "Submit Transfer"}
-              </button>
-            </div>
-          </div>
+          <TransferAmount
+            debitAccountId={debitAccountId}
+            creditAccountId={creditAccountId}
+            amount={amount}
+            loading={loading}
+            onChangeDebitAccountId={setDebitAccountId}
+            onChangeCreditAccountId={setCreditAccountId}
+            onChangeAmount={setAmount}
+            onTransferAmount={createTransfer}
+          />
+
+          <TopUpAmount
+            accountId={topUpAccountId}
+            amount={topUpAmount}
+            loading={loading}
+            onChangeAccountId={setTopUpAccountId}
+            onChangeAmount={setTopUpAmount}
+            onTopUp={topUpAccount}
+          />
         </section>
 
         <section className="tb-card tb-card-wide">
