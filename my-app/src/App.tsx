@@ -31,11 +31,11 @@ function App() {
   // 2142322155302171094276862091850845246
   // 2142833224494385145654821421757722967
 
-  async function createAccount() {
+  async function createAccount(email: string, name?: string) {
     setError(null);
     setLoading(true);
     try {
-      const { accountId } = await createAccountApi();
+      const { accountId } = await createAccountApi({ email, name });
       setCreatedAccountId(accountId);
       if (!debitAccountId) {
         setDebitAccountId(accountId);

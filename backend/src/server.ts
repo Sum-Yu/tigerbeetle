@@ -7,6 +7,7 @@ import {
   AccountFlags,
   AccountFilterFlags,
 } from "tigerbeetle-node";
+import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ const PORT = process.env.PORT ?? 4000;
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/users", userRoutes);
 
 // Configure TigerBeetle client
 const client = createClient({
@@ -23,7 +25,8 @@ const client = createClient({
 });
 
 // Create A Bank Account (Provider Account)
-let TREASURY_ACCOUNT_ID: string | null = "2142330582467847940723297385933508998";
+let TREASURY_ACCOUNT_ID: string | null =
+  "2142330582467847940723297385933508998";
 
 async function getOrCreateTreasuryAccountId(): Promise<string> {
   if (TREASURY_ACCOUNT_ID) {

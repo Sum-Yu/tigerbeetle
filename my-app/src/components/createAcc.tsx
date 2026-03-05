@@ -1,8 +1,10 @@
 import "../App.css";
+import { useState } from "react";
+
 type CreateAccProps = {
   createdAccountId: string | null;
   loading: boolean;
-  onCreateAccount: () => void | Promise<void>;
+  onCreateAccount: (email: string, name?: string) => void | Promise<void>;
 };
 
 function CreateAcc({
@@ -10,19 +12,41 @@ function CreateAcc({
   loading,
   onCreateAccount,
 }: CreateAccProps) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+
   return (
     <div className="tb-card">
       <h2 className="tb-card-title">Create Account</h2>
       <p className="tb-card-description">
         Create a new TigerBeetle account with history tracking enabled.
       </p>
-      <button
-        className="tb-button tb-button-primary"
-        onClick={onCreateAccount}
-        disabled={loading}
-      >
-        {loading ? "Working..." : "Create New Account"}
-      </button>
+      <div className="tb-form">
+        <input
+          className="tb-input"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          autoComplete="email"
+        />
+        <input
+          className="tb-input"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name"
+          autoComplete="name"
+        />
+        <button
+          className="tb-button tb-button-primary"
+          onClick={() => onCreateAccount(email, name || undefined)}
+          disabled={loading || !email.trim()}
+        >
+          {loading ? "Working..." : "Create New Account"}
+        </button>
+      </div>
+
       {createdAccountId && (
         <div className="tb-chip">
           <span className="tb-chip-label">New account ID</span>
