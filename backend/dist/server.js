@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { createClient, id, AccountFlags, AccountFilterFlags, } from "tigerbeetle-node";
+import { createClient, id, AccountFlags, AccountFilterFlags, CreateTransferError, } from "tigerbeetle-node";
 import userRoutes from "./routes/userRoutes.js";
 dotenv.config();
 const app = express();
@@ -53,36 +53,35 @@ app.get("/api/health", (_req, res) => {
     res.json({ ok: true });
 });
 // Create a new account
-app.post("/api/accounts", async (_req, res) => {
-    try {
-        const account = {
-            id: id(),
-            debits_pending: 0n,
-            debits_posted: 0n,
-            credits_pending: 0n,
-            credits_posted: 0n,
-            user_data_128: 0n,
-            user_data_64: 0n,
-            user_data_32: 0,
-            reserved: 0,
-            ledger: 1,
-            code: 1,
-            flags: AccountFlags.history,
-            timestamp: 0n,
-        };
-        const errors = await client.createAccounts([account]);
-        if (errors.length > 0) {
-            return res.status(400).json({ errors: jsonifyBigInts(errors) });
-        }
-        res.json({
-            accountId: account.id.toString(),
-        });
-    }
-    catch (err) {
-        console.error("Error creating account:", err);
-        res.status(500).json({ error: "Failed to create account" });
-    }
-});
+// app.post("/api/accounts", async (_req, res) => {
+//   try {
+//     const account = {
+//       id: id(),
+//       debits_pending: 0n,
+//       debits_posted: 0n,
+//       credits_pending: 0n,
+//       credits_posted: 0n,
+//       user_data_128: 0n,
+//       user_data_64: 0n,
+//       user_data_32: 0,
+//       reserved: 0,
+//       ledger: 1,
+//       code: 1,
+//       flags: AccountFlags.history | AccountFlags.debits_must_not_exceed_credits,
+//       timestamp: 0n,
+//     };
+//     const errors = await client.createAccounts([account]);
+//     if (errors.length > 0) {
+//       return res.status(400).json({ errors: jsonifyBigInts(errors) });
+//     }
+//     res.json({
+//       accountId: account.id.toString(),
+//     });
+//   } catch (err) {
+//     console.error("Error creating account:", err);
+//     res.status(500).json({ error: "Failed to create account" });
+//   }
+// });
 // Get account info + simple balance
 app.get("/api/accounts/:id", async (req, res) => {
     try {
@@ -155,6 +154,14 @@ app.post("/api/topup", async (req, res) => {
         };
         const errors = await client.createTransfers([transfer]);
         if (errors.length > 0) {
+            const err = errors[0];
+            if (err.result === CreateTransferError.exceeds_credits) {
+                return res.status(400).json({
+                    error: "Insufficient balance",
+                    code: "exceeds_credits",
+                    message: "Your account does not have enough balance for this transfer.",
+                });
+            }
             return res.status(400).json({ errors: jsonifyBigInts(errors) });
         }
         res.json({ transferId: transfer.id.toString() });
@@ -173,11 +180,31 @@ app.post("/api/transfers", async (req, res) => {
                 error: "debitAccountId, creditAccountId and amount are required",
             });
         }
+        const amountBigInt = BigInt(amount);
+        if (amountBigInt <= 0n) {
+            return res.status(400).json({
+                error: "Amount must be greater than zero",
+            });
+        }
+        // Enforce balance >= 0: debit account must have at least `amount` available
+        const debitAccounts = await client.lookupAccounts([BigInt(debitAccountId)]);
+        if (!debitAccounts || debitAccounts.length === 0) {
+            return res.status(404).json({ error: "Debit account not found" });
+        }
+        const debitAccount = debitAccounts[0];
+        const balance = debitAccount.credits_posted - debitAccount.debits_posted;
+        if (balance < amountBigInt) {
+            return res.status(400).json({
+                error: "Insufficient balance",
+                code: "exceeds_credits",
+                message: "Your account does not have enough balance for this transfer.",
+            });
+        }
         const transfer = {
             id: id(),
             debit_account_id: BigInt(debitAccountId),
             credit_account_id: BigInt(creditAccountId),
-            amount: BigInt(amount),
+            amount: amountBigInt,
             pending_id: 0n,
             user_data_128: 0n,
             user_data_64: 0n,
@@ -190,6 +217,14 @@ app.post("/api/transfers", async (req, res) => {
         };
         const errors = await client.createTransfers([transfer]);
         if (errors.length > 0) {
+            const err = errors[0];
+            if (err.result === CreateTransferError.exceeds_credits) {
+                return res.status(400).json({
+                    error: "Insufficient balance",
+                    code: "exceeds_credits",
+                    message: "The debit account does not have enough balance for this transfer.",
+                });
+            }
             return res.status(400).json({ errors: jsonifyBigInts(errors) });
         }
         res.json({ transferId: transfer.id.toString() });

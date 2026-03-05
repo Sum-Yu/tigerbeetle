@@ -28,7 +28,7 @@ function TransferAmount({
       </p>
       <div className="tb-form">
         <label className="tb-field">
-          <span className="tb-field-label">Debit Account ID</span>
+          <span className="tb-field-label">Debit Account ID (Sender)</span>
           <input
             className="tb-input"
             type="text"
@@ -37,7 +37,7 @@ function TransferAmount({
           />
         </label>
         <label className="tb-field">
-          <span className="tb-field-label">Credit Account ID</span>
+          <span className="tb-field-label">Credit Account ID (Receiver)</span>
           <input
             className="tb-input"
             type="text"

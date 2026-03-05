@@ -127,6 +127,16 @@ function App() {
         />
 
         <UserList />
+
+        <h1 className="text-2xl font-bold ml-2">Step 2: Top Up Account</h1>
+        <TopUpAmount
+          accountId={topUpAccountId}
+          amount={topUpAmount}
+          loading={loading}
+          onChangeAccountId={setTopUpAccountId}
+          onChangeAmount={setTopUpAmount}
+          onTopUp={topUpAccount}
+        />
         <section className="tb-grid">
           {/* <CreateAcc
             createdAccountId={createdAccountId}
@@ -145,14 +155,14 @@ function App() {
             onTransferAmount={createTransfer}
           />
 
-          <TopUpAmount
+          {/* <TopUpAmount
             accountId={topUpAccountId}
             amount={topUpAmount}
             loading={loading}
             onChangeAccountId={setTopUpAccountId}
             onChangeAmount={setTopUpAmount}
             onTopUp={topUpAccount}
-          />
+          /> */}
         </section>
 
         <section className="tb-card tb-card-wide">
