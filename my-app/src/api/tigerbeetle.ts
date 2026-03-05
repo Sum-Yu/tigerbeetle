@@ -18,11 +18,21 @@ export type Transfer = {
   timestamp: string;
 };
 
+export type User = {
+  id: string;
+  email: string;
+  name?: string;
+  tigerbeetleAccountId: string;
+  createdAt: string;
+  updatedAt: string;
+  balance: number;
+};
+
 export async function createAccountApi(body: {
   email: string;
   name?: string;
 }): Promise<{ accountId: string }> {
-  const res = await fetch(`${API_BASE_URL}/users`, {
+  const res = await fetch(`${API_BASE_URL}/users/create-user`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -32,7 +42,7 @@ export async function createAccountApi(body: {
     const data = await res.json().catch(() => ({}));
     if (res.status === 404) {
       throw new Error(
-        "Create user API not found. Start the backend with: cd backend && npm run dev"
+        "Create user API not found. Start the backend with: cd backend && npm run dev",
       );
     }
     throw new Error(data.error || "Failed to create account");
@@ -108,4 +118,13 @@ export async function fetchAccountAndHistoryApi(accountId: string): Promise<{
     accountInfo,
     transfers: transfersData.transfers ?? [],
   };
+}
+
+export async function getUserListApi(): Promise<{ users: User[] }> {
+  const res = await fetch(`${API_BASE_URL}/users/get-user-list`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to get user list");
+  }
+  return (await res.json()) as { users: User[] };
 }

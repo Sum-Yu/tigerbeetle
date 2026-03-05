@@ -11,6 +11,7 @@ import {
 import CreateAcc from "./components/createAcc";
 import TransferAmount from "./components/transferAmount";
 import TopUpAmount from "./components/topUpAmount";
+import UserList from "./components/userList";
 
 function App() {
   const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
@@ -26,10 +27,6 @@ function App() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // 2142322132939244820262595012401905400
-  // 2142322155302171094276862091850845246
-  // 2142833224494385145654821421757722967
 
   async function createAccount(email: string, name?: string) {
     setError(null);
@@ -122,13 +119,20 @@ function App() {
 
       <main className="tb-main">
         {error && <div className="tb-alert tb-alert-error">{error}</div>}
+        <h1 className="text-2xl font-bold ml-2">Step 1: Create Account</h1>
+        <CreateAcc
+          createdAccountId={createdAccountId}
+          loading={loading}
+          onCreateAccount={createAccount}
+        />
 
+        <UserList />
         <section className="tb-grid">
-          <CreateAcc
+          {/* <CreateAcc
             createdAccountId={createdAccountId}
             loading={loading}
             onCreateAccount={createAccount}
-          />
+          /> */}
 
           <TransferAmount
             debitAccountId={debitAccountId}

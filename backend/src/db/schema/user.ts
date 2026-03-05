@@ -1,4 +1,11 @@
-import { pgTable, uuid, varchar, timestamp, text } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  timestamp,
+  text,
+  bigint,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { transaction } from "./transaction.js";
 
@@ -14,6 +21,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  balance: bigint("balance", { mode: "number" }).notNull().default(0),
 });
 
 export const userRelations = relations(user, ({ many }) => ({
