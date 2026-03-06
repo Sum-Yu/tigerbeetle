@@ -64,8 +64,11 @@ export async function createTransferApi(input: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Failed to create transfer");
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    throw new Error(body.message || body.error || "Failed to create transfer");
   }
 
   // Ignore body; we only care that it succeeded.

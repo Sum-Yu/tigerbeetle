@@ -27,6 +27,7 @@ function App() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   async function createAccount(email: string, name?: string) {
     setError(null);
@@ -49,6 +50,7 @@ function App() {
 
   async function createTransfer() {
     setError(null);
+    setTransferError(null);
     setLoading(true);
     try {
       await createTransferApi({
@@ -56,12 +58,15 @@ function App() {
         creditAccountId,
         amount,
       });
+      setTransferError(null);
       // Refresh account + transfers for the debit account if it matches lookup
       if (lookupAccountId) {
         void fetchAccountAndHistory(lookupAccountId);
       }
     } catch (e: any) {
-      setError(e.message ?? "Unknown error");
+      const message = e.message ?? "Unknown error";
+      setTransferError(message);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -137,33 +142,18 @@ function App() {
           onChangeAmount={setTopUpAmount}
           onTopUp={topUpAccount}
         />
-        <section className="tb-grid">
-          {/* <CreateAcc
-            createdAccountId={createdAccountId}
-            loading={loading}
-            onCreateAccount={createAccount}
-          /> */}
-
-          <TransferAmount
-            debitAccountId={debitAccountId}
-            creditAccountId={creditAccountId}
-            amount={amount}
-            loading={loading}
-            onChangeDebitAccountId={setDebitAccountId}
-            onChangeCreditAccountId={setCreditAccountId}
-            onChangeAmount={setAmount}
-            onTransferAmount={createTransfer}
-          />
-
-          {/* <TopUpAmount
-            accountId={topUpAccountId}
-            amount={topUpAmount}
-            loading={loading}
-            onChangeAccountId={setTopUpAccountId}
-            onChangeAmount={setTopUpAmount}
-            onTopUp={topUpAccount}
-          /> */}
-        </section>
+        <h1 className="text-2xl font-bold ml-2">Step 3: Transfer Amount</h1>
+        <TransferAmount
+          debitAccountId={debitAccountId}
+          creditAccountId={creditAccountId}
+          amount={amount}
+          loading={loading}
+          error={transferError}
+          onChangeDebitAccountId={setDebitAccountId}
+          onChangeCreditAccountId={setCreditAccountId}
+          onChangeAmount={setAmount}
+          onTransferAmount={createTransfer}
+        />
 
         <section className="tb-card tb-card-wide">
           <div className="tb-card-header-row">
