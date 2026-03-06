@@ -18,18 +18,38 @@ export type Transfer = {
   timestamp: string;
 };
 
-export async function createAccountApi(): Promise<{ accountId: string }> {
-  const res = await fetch(`${API_BASE_URL}/accounts`, {
+export type User = {
+  id: string;
+  email: string;
+  name?: string;
+  tigerbeetleAccountId: string;
+  createdAt: string;
+  updatedAt: string;
+  balance: number;
+};
+
+export async function createAccountApi(body: {
+  email: string;
+  name?: string;
+}): Promise<{ accountId: string }> {
+  const res = await fetch(`${API_BASE_URL}/users/create-user`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Failed to create account");
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 404) {
+      throw new Error(
+        "Create user API not found. Start the backend with: cd backend && npm run dev",
+      );
+    }
+    throw new Error(data.error || "Failed to create account");
   }
 
-  return (await res.json()) as { accountId: string };
+  const data = (await res.json()) as { tigerbeetleAccountId: string };
+  return { accountId: data.tigerbeetleAccountId };
 }
 
 export async function createTransferApi(input: {
@@ -44,8 +64,11 @@ export async function createTransferApi(input: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Failed to create transfer");
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    throw new Error(body.message || body.error || "Failed to create transfer");
   }
 
   // Ignore body; we only care that it succeeded.
@@ -98,4 +121,13 @@ export async function fetchAccountAndHistoryApi(accountId: string): Promise<{
     accountInfo,
     transfers: transfersData.transfers ?? [],
   };
+}
+
+export async function getUserListApi(): Promise<{ users: User[] }> {
+  const res = await fetch(`${API_BASE_URL}/users/get-user-list`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to get user list");
+  }
+  return (await res.json()) as { users: User[] };
 }

@@ -4,6 +4,7 @@ type TransferAmountProps = {
   creditAccountId: string;
   amount: string;
   loading: boolean;
+  error: string | null;
   onChangeDebitAccountId: (value: string) => void;
   onChangeCreditAccountId: (value: string) => void;
   onChangeAmount: (value: string) => void;
@@ -15,6 +16,7 @@ function TransferAmount({
   creditAccountId,
   amount,
   loading,
+  error,
   onChangeDebitAccountId,
   onChangeCreditAccountId,
   onChangeAmount,
@@ -26,9 +28,14 @@ function TransferAmount({
       <p className="tb-card-description">
         Move funds between two accounts in a single transfer.
       </p>
+      {error && (
+        <div className="tb-alert tb-alert-error" role="alert">
+          {error}
+        </div>
+      )}
       <div className="tb-form">
         <label className="tb-field">
-          <span className="tb-field-label">Debit Account ID</span>
+          <span className="tb-field-label">Debit Account ID (Sender)</span>
           <input
             className="tb-input"
             type="text"
@@ -37,7 +44,7 @@ function TransferAmount({
           />
         </label>
         <label className="tb-field">
-          <span className="tb-field-label">Credit Account ID</span>
+          <span className="tb-field-label">Credit Account ID (Receiver)</span>
           <input
             className="tb-input"
             type="text"
@@ -62,6 +69,7 @@ function TransferAmount({
         >
           {loading ? "Working..." : "Submit Transfer"}
         </button>
+    
       </div>
     </div>
   );

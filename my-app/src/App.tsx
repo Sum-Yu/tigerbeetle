@@ -11,6 +11,7 @@ import {
 import CreateAcc from "./components/createAcc";
 import TransferAmount from "./components/transferAmount";
 import TopUpAmount from "./components/topUpAmount";
+import UserList from "./components/userList";
 
 function App() {
   const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
@@ -26,16 +27,13 @@ function App() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
-  // 2142322132939244820262595012401905400
-  // 2142322155302171094276862091850845246
-  // 2142833224494385145654821421757722967
-
-  async function createAccount() {
+  async function createAccount(email: string, name?: string) {
     setError(null);
     setLoading(true);
     try {
-      const { accountId } = await createAccountApi();
+      const { accountId } = await createAccountApi({ email, name });
       setCreatedAccountId(accountId);
       if (!debitAccountId) {
         setDebitAccountId(accountId);
@@ -52,6 +50,7 @@ function App() {
 
   async function createTransfer() {
     setError(null);
+    setTransferError(null);
     setLoading(true);
     try {
       await createTransferApi({
@@ -59,12 +58,15 @@ function App() {
         creditAccountId,
         amount,
       });
+      setTransferError(null);
       // Refresh account + transfers for the debit account if it matches lookup
       if (lookupAccountId) {
         void fetchAccountAndHistory(lookupAccountId);
       }
     } catch (e: any) {
-      setError(e.message ?? "Unknown error");
+      const message = e.message ?? "Unknown error";
+      setTransferError(message);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -122,34 +124,36 @@ function App() {
 
       <main className="tb-main">
         {error && <div className="tb-alert tb-alert-error">{error}</div>}
+        <h1 className="text-2xl font-bold ml-2">Step 1: Create Account</h1>
+        <CreateAcc
+          createdAccountId={createdAccountId}
+          loading={loading}
+          onCreateAccount={createAccount}
+        />
 
-        <section className="tb-grid">
-          <CreateAcc
-            createdAccountId={createdAccountId}
-            loading={loading}
-            onCreateAccount={createAccount}
-          />
+        <UserList />
 
-          <TransferAmount
-            debitAccountId={debitAccountId}
-            creditAccountId={creditAccountId}
-            amount={amount}
-            loading={loading}
-            onChangeDebitAccountId={setDebitAccountId}
-            onChangeCreditAccountId={setCreditAccountId}
-            onChangeAmount={setAmount}
-            onTransferAmount={createTransfer}
-          />
-
-          <TopUpAmount
-            accountId={topUpAccountId}
-            amount={topUpAmount}
-            loading={loading}
-            onChangeAccountId={setTopUpAccountId}
-            onChangeAmount={setTopUpAmount}
-            onTopUp={topUpAccount}
-          />
-        </section>
+        <h1 className="text-2xl font-bold ml-2">Step 2: Top Up Account</h1>
+        <TopUpAmount
+          accountId={topUpAccountId}
+          amount={topUpAmount}
+          loading={loading}
+          onChangeAccountId={setTopUpAccountId}
+          onChangeAmount={setTopUpAmount}
+          onTopUp={topUpAccount}
+        />
+        <h1 className="text-2xl font-bold ml-2">Step 3: Transfer Amount</h1>
+        <TransferAmount
+          debitAccountId={debitAccountId}
+          creditAccountId={creditAccountId}
+          amount={amount}
+          loading={loading}
+          error={transferError}
+          onChangeDebitAccountId={setDebitAccountId}
+          onChangeCreditAccountId={setCreditAccountId}
+          onChangeAmount={setAmount}
+          onTransferAmount={createTransfer}
+        />
 
         <section className="tb-card tb-card-wide">
           <div className="tb-card-header-row">
