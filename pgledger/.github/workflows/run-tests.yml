@@ -1,0 +1,58 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !contains(github.ref, 'main')}}
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        postgres_version: ["15", "16", "17", "18"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: extractions/setup-just@v3
+
+      - uses: jdx/mise-action@v3
+        with:
+          log_level: info
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "go/go.mod"
+          cache-dependency-path: "go/go.sum"
+
+      - name: Start Docker Compose
+        run: docker compose up --pull always --wait
+        env:
+          POSTGRES_VERSION: ${{ matrix.postgres_version }}
+
+      - name: Print PostgreSQL version
+        run: just --timestamp dbversion
+
+      - name: Run tests and linters
+        run: just --timestamp check
+        env:
+          POSTGRES_VERSION: ${{ matrix.postgres_version }}
+
+  all-tests-passed:
+    if: ${{ always() }}
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      # This approach is from: https://github.com/orgs/community/discussions/28864
+      - name: Fail unless required checks pass
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}
+        run: exit 1
+      - name: All matrix tests passed
+        run: echo "All PostgreSQL versions tested successfully"
