@@ -8,6 +8,13 @@
       "when": 1772608852660,
       "tag": "0000_burly_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772690899664,
+      "tag": "0001_bouncy_namorita",
+      "breakpoints": true
     }
   ]
 }
