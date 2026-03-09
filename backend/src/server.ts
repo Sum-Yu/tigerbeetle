@@ -27,7 +27,7 @@ const client = createClient({
 
 // Create A Bank Account (Provider Account)
 let TREASURY_ACCOUNT_ID: string | null =
-  "2142330582467847940723297385933508998";
+  "2143405532528893555931184785396120149";
 
 async function getOrCreateTreasuryAccountId(): Promise<string> {
   if (TREASURY_ACCOUNT_ID) {
@@ -252,8 +252,7 @@ app.post("/api/transfers", async (req, res) => {
       return res.status(400).json({
         error: "Insufficient balance",
         code: "exceeds_credits",
-        message:
-          "Your account does not have enough balance for this transfer.",
+        message: "Your account does not have enough balance for this transfer.",
       });
     }
 
