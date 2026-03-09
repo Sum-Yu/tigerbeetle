@@ -3,12 +3,14 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { createClient, id, AccountFlags, AccountFilterFlags, CreateTransferError, } from "tigerbeetle-node";
 import userRoutes from "./routes/userRoutes.js";
+import pgledgerRoutes from "./routes/pgledgerRoutes.js";
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 app.use(cors());
 app.use(express.json());
 app.use("/api/users", userRoutes);
+app.use("/api/pgledger", pgledgerRoutes);
 // Configure TigerBeetle client
 const client = createClient({
     cluster_id: BigInt(process.env.TB_CLUSTER_ID ?? 0),

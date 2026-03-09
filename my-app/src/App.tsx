@@ -12,22 +12,42 @@ import CreateAcc from "./components/createAcc";
 import TransferAmount from "./components/transferAmount";
 import TopUpAmount from "./components/topUpAmount";
 import UserList from "./components/userList";
+import Dashboard from "./pg_components/Dashboard";
+
+type DashboardMode = "tigerbeetle" | "pgledger";
 
 function App() {
+  const [mode, setMode] = useState<DashboardMode>("tigerbeetle");
   const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
   const [debitAccountId, setDebitAccountId] = useState("");
   const [creditAccountId, setCreditAccountId] = useState("");
   const [amount, setAmount] = useState("0");
-
   const [topUpAccountId, setTopUpAccountId] = useState("");
   const [topUpAmount, setTopUpAmount] = useState("0");
-
   const [lookupAccountId, setLookupAccountId] = useState("");
   const [accountInfo, setAccountInfo] = useState<AccountSummary | null>(null);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
+
+  if (mode === "pgledger") {
+    return (
+      <div className="tb-root">
+        <div className="flex justify-end gap-2">
+          <button
+            className="tb-button tb-button-primary"
+            onClick={() => setMode("tigerbeetle")}
+            aria-pressed={true}
+          >
+            TigerBeetle
+          </button>
+        </div>
+
+        <Dashboard />
+      </div>
+    );
+  }
 
   async function createAccount(email: string, name?: string) {
     setError(null);
@@ -41,8 +61,8 @@ function App() {
       if (!lookupAccountId) {
         setLookupAccountId(accountId);
       }
-    } catch (e: any) {
-      setError(e.message ?? "Unknown error");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -63,8 +83,8 @@ function App() {
       if (lookupAccountId) {
         void fetchAccountAndHistory(lookupAccountId);
       }
-    } catch (e: any) {
-      const message = e.message ?? "Unknown error";
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Unknown error";
       setTransferError(message);
       setError(message);
     } finally {
@@ -84,8 +104,8 @@ function App() {
       if (lookupAccountId === topUpAccountId && topUpAccountId) {
         void fetchAccountAndHistory(topUpAccountId);
       }
-    } catch (e: any) {
-      setError(e.message ?? "Unknown error");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -99,8 +119,8 @@ function App() {
         await fetchAccountAndHistoryApi(accountId);
       setAccountInfo(info);
       setTransfers(list);
-    } catch (e: any) {
-      setError(e.message ?? "Unknown error");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
       setAccountInfo(null);
       setTransfers([]);
     } finally {
@@ -120,6 +140,17 @@ function App() {
             </p>
           </div>
         </div>
+
+        {mode === "tigerbeetle" && (
+          <div className="flex justify-end gap-2">
+            <button
+              className="tb-button tb-button-secondary"
+              onClick={() => setMode("pgledger")}
+            >
+              PgLedger
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="tb-main">
