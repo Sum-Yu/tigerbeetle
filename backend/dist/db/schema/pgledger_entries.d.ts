@@ -56,12 +56,12 @@ export declare const pgledgerEntries: import("drizzle-orm/pg-core").PgTableWithC
         amount: import("drizzle-orm/pg-core").PgColumn<{
             name: "amount";
             tableName: "pgledger_entries";
-            dataType: "string";
-            columnType: "PgNumeric";
-            data: string;
+            dataType: "bigint";
+            columnType: "PgBigInt64";
+            data: bigint;
             driverParam: string;
             notNull: true;
-            hasDefault: false;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;

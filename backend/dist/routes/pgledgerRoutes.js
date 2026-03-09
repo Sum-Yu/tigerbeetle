@@ -13,7 +13,7 @@ function getRows(result) {
 async function getOrCreateTreasuryAccountId() {
     if (treasuryAccountId)
         return treasuryAccountId;
-    const result = await db.execute(sql `SELECT * FROM pgledger_create_account('Treasury', 'USD', true, true, null)`);
+    const result = await db.execute(sql `SELECT * FROM pgledger_create_account('Treasury', '', 'USD', true, true, null)`);
     const rows = getRows(result);
     const row = rows[0];
     const id = row && typeof row.id === "string" ? row.id : null;
@@ -26,11 +26,14 @@ async function getOrCreateTreasuryAccountId() {
 // Create account (pgledger)
 router.post("/accounts", async (req, res) => {
     try {
-        const { name, currency = "USD", allowNegativeBalance = true, allowPositiveBalance = true, metadata, } = req.body;
+        const { name, email, currency = "USD", allowNegativeBalance = true, allowPositiveBalance = false, metadata, } = req.body;
         if (!name || typeof name !== "string" || !name.trim()) {
             return res.status(400).json({ error: "name is required" });
         }
-        const result = await db.execute(sql `SELECT * FROM pgledger_create_account(${name.trim()}, ${currency}, ${allowNegativeBalance}, ${allowPositiveBalance}, ${metadata ?? null})`);
+        if (email == null || typeof email !== "string") {
+            return res.status(400).json({ error: "email is required" });
+        }
+        const result = await db.execute(sql `SELECT * FROM pgledger_create_account(${name.trim()}, ${email}, ${currency}, ${allowNegativeBalance}, ${allowPositiveBalance}, ${metadata ?? null})`);
         const rows = getRows(result);
         const account = rows[0];
         if (!account) {
@@ -100,7 +103,9 @@ router.post("/transfers", async (req, res) => {
         }
         const amountNum = typeof amount === "string" ? amount : String(amount);
         if (Number(amountNum) <= 0) {
-            return res.status(400).json({ error: "Amount must be greater than zero" });
+            return res
+                .status(400)
+                .json({ error: "Amount must be greater than zero" });
         }
         const result = await db.execute(sql `SELECT * FROM pgledger_create_transfer(${fromAccountId}, ${toAccountId}, ${amountNum}::numeric, null, null)`);
         const rows = getRows(result);
@@ -127,7 +132,9 @@ router.post("/topup", async (req, res) => {
         }
         const amountNum = typeof amount === "string" ? amount : String(amount);
         if (Number(amountNum) <= 0) {
-            return res.status(400).json({ error: "Amount must be greater than zero" });
+            return res
+                .status(400)
+                .json({ error: "Amount must be greater than zero" });
         }
         const debitAccountId = await getOrCreateTreasuryAccountId();
         const result = await db.execute(sql `SELECT * FROM pgledger_create_transfer(${debitAccountId}, ${creditAccountId}, ${amountNum}::numeric, null, null)`);

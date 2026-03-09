@@ -31,11 +31,15 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
 
-  async function createAccount(name: string, currency?: string) {
+  async function createAccount(
+    name: string,
+    currency?: string,
+    email?: string,
+  ) {
     setError(null);
     setLoading(true);
     try {
-      const created = await createAccountApi({ name, currency });
+      const created = await createAccountApi({ name, email, currency });
       setCreatedAccountId(created.id);
       if (!fromAccountId) setFromAccountId(created.id);
       if (!lookupAccountId) setLookupAccountId(created.id);
@@ -162,7 +166,8 @@ export default function Dashboard() {
           loading={loading}
           onChangeLookupAccountId={setLookupAccountId}
           onLoad={() =>
-            lookupAccountId.trim() && fetchAccountAndHistory(lookupAccountId.trim())
+            lookupAccountId.trim() &&
+            fetchAccountAndHistory(lookupAccountId.trim())
           }
         />
       </main>

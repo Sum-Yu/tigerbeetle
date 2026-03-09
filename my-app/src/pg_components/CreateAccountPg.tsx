@@ -13,6 +13,7 @@ export default function CreateAccountPg({
   onCreateAccount,
 }: CreateAccountPgProps) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [currency, setCurrency] = useState("USD");
 
   return (
@@ -33,6 +34,14 @@ export default function CreateAccountPg({
         <input
           className="tb-input"
           type="text"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          autoComplete="off"
+        />
+        <input
+          className="tb-input"
+          type="text"
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
           placeholder="Currency (e.g. USD)"
@@ -40,7 +49,9 @@ export default function CreateAccountPg({
         />
         <button
           className="tb-button tb-button-primary"
-          onClick={() => onCreateAccount(name.trim(), currency.trim() || undefined)}
+          onClick={() =>
+            onCreateAccount(name.trim(), currency.trim() || undefined)
+          }
           disabled={loading || !name.trim()}
         >
           {loading ? "Working..." : "Create Account"}

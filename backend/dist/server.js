@@ -17,7 +17,7 @@ const client = createClient({
     replica_addresses: [process.env.TB_ADDRESS ?? "3000"],
 });
 // Create A Bank Account (Provider Account)
-let TREASURY_ACCOUNT_ID = "2142330582467847940723297385933508998";
+let TREASURY_ACCOUNT_ID = "2143405532528893555931184785396120149";
 async function getOrCreateTreasuryAccountId() {
     if (TREASURY_ACCOUNT_ID) {
         return TREASURY_ACCOUNT_ID;
