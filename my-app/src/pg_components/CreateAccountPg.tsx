@@ -13,7 +13,6 @@ export default function CreateAccountPg({
   onCreateAccount,
 }: CreateAccountPgProps) {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [currency, setCurrency] = useState("USD");
 
   return (
@@ -29,14 +28,6 @@ export default function CreateAccountPg({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Account name"
-          autoComplete="off"
-        />
-        <input
-          className="tb-input"
-          type="text"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
           autoComplete="off"
         />
         <input

@@ -22,7 +22,9 @@ export const pgledgerTransfers = pgTable(
     toAccountId: text("to_account_id")
       .notNull()
       .references(() => pgledgerAccounts.id),
-    amount: bigint("amount", { mode: "bigint" }).notNull().default(0n),
+    amount: numeric("amount", { precision: 20, scale: 4 })
+      .notNull()
+      .default("0"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

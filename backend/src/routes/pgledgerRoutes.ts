@@ -36,14 +36,12 @@ router.post("/accounts", async (req, res) => {
   try {
     const {
       name,
-      email,
       currency = "USD",
-      allowNegativeBalance = true,
-      allowPositiveBalance = false,
+      allowNegativeBalance = false,
+      allowPositiveBalance = true,
       metadata,
     } = req.body as {
       name?: string;
-      email?: string;
       currency?: string;
       allowNegativeBalance?: boolean;
       allowPositiveBalance?: boolean;
@@ -53,12 +51,18 @@ router.post("/accounts", async (req, res) => {
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ error: "name is required" });
     }
-    if (email == null || typeof email !== "string") {
-      return res.status(400).json({ error: "email is required" });
-    }
 
     const result = await db.execute(
-      sql`SELECT * FROM pgledger_create_account(${name.trim()}, ${email}, ${currency}, ${allowNegativeBalance}, ${allowPositiveBalance}, ${metadata ?? null})`,
+      sql`
+        SELECT *
+        FROM pgledger_create_account(
+          ${name.trim()}::text,
+          ${currency}::text,
+          ${allowNegativeBalance}::boolean,
+          ${allowPositiveBalance}::boolean,
+          ${metadata == null ? null : JSON.stringify(metadata)}::jsonb
+        )
+      `,
     );
     const rows = getRows(result);
     const account = rows[0];

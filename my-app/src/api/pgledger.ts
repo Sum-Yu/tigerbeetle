@@ -39,7 +39,6 @@ export type PgledgerTransfer = {
 
 export async function createAccountApi(body: {
   name: string;
-  email: string;
   currency?: string;
   allowNegativeBalance?: boolean;
   allowPositiveBalance?: boolean;
@@ -49,7 +48,6 @@ export async function createAccountApi(body: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: body.name,
-      email: body.email,
       currency: body.currency ?? "USD",
       allowNegativeBalance: body.allowNegativeBalance ?? true,
       allowPositiveBalance: body.allowPositiveBalance ?? true,

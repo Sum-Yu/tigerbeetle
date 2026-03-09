@@ -31,15 +31,14 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
 
-  async function createAccount(
-    name: string,
-    currency?: string,
-    email?: string,
-  ) {
+  async function createAccount(name: string, currency?: string) {
     setError(null);
     setLoading(true);
     try {
-      const created = await createAccountApi({ name, email, currency });
+      const created = await createAccountApi({
+        name,
+        currency,
+      });
       setCreatedAccountId(created.id);
       if (!fromAccountId) setFromAccountId(created.id);
       if (!lookupAccountId) setLookupAccountId(created.id);

@@ -26,14 +26,11 @@ async function getOrCreateTreasuryAccountId() {
 // Create account (pgledger)
 router.post("/accounts", async (req, res) => {
     try {
-        const { name, email, currency = "USD", allowNegativeBalance = true, allowPositiveBalance = false, metadata, } = req.body;
+        const { name, currency = "USD", allowNegativeBalance = true, allowPositiveBalance = false, metadata, } = req.body;
         if (!name || typeof name !== "string" || !name.trim()) {
             return res.status(400).json({ error: "name is required" });
         }
-        if (email == null || typeof email !== "string") {
-            return res.status(400).json({ error: "email is required" });
-        }
-        const result = await db.execute(sql `SELECT * FROM pgledger_create_account(${name.trim()}, ${email}, ${currency}, ${allowNegativeBalance}, ${allowPositiveBalance}, ${metadata ?? null})`);
+        const result = await db.execute(sql `SELECT * FROM pgledger_create_account(${name.trim()}, ${currency}, ${allowNegativeBalance}, ${allowPositiveBalance}, ${metadata ?? null})`);
         const rows = getRows(result);
         const account = rows[0];
         if (!account) {

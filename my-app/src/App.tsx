@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import "./App.css";
 import {
   createAccountApi,
@@ -12,12 +13,8 @@ import CreateAcc from "./components/createAcc";
 import TransferAmount from "./components/transferAmount";
 import TopUpAmount from "./components/topUpAmount";
 import UserList from "./components/userList";
-import Dashboard from "./pg_components/Dashboard";
-
-type DashboardMode = "tigerbeetle" | "pgledger";
 
 function App() {
-  const [mode, setMode] = useState<DashboardMode>("tigerbeetle");
   const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
   const [debitAccountId, setDebitAccountId] = useState("");
   const [creditAccountId, setCreditAccountId] = useState("");
@@ -30,24 +27,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
-
-  if (mode === "pgledger") {
-    return (
-      <div className="tb-root">
-        <div className="flex justify-end gap-2">
-          <button
-            className="tb-button tb-button-primary"
-            onClick={() => setMode("tigerbeetle")}
-            aria-pressed={true}
-          >
-            TigerBeetle
-          </button>
-        </div>
-
-        <Dashboard />
-      </div>
-    );
-  }
 
   async function createAccount(email: string, name?: string) {
     setError(null);
@@ -141,16 +120,11 @@ function App() {
           </div>
         </div>
 
-        {mode === "tigerbeetle" && (
-          <div className="flex justify-end gap-2">
-            <button
-              className="tb-button tb-button-secondary"
-              onClick={() => setMode("pgledger")}
-            >
-              PgLedger
-            </button>
-          </div>
-        )}
+        <div className="flex justify-end gap-2">
+          <Link to="/pgledger" className="tb-button tb-button-secondary">
+            PgLedger
+          </Link>
+        </div>
       </header>
 
       <main className="tb-main">
