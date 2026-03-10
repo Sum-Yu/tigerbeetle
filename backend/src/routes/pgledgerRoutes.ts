@@ -7,8 +7,10 @@ import { eq, or, desc } from "drizzle-orm";
 const router = Router();
 
 // In-memory cache for treasury account ID (or set PGLEDGER_TREASURY_ACCOUNT_ID in env)
-let treasuryAccountId: string | null =
-  process.env.PGLEDGER_TREASURY_ACCOUNT_ID ?? null;
+// let treasuryAccountId: string | null =
+//   process.env.PGLEDGER_TREASURY_ACCOUNT_ID ?? null;
+
+let treasuryAccountId: string | null = "pgla_01KKAP7BSEFDXV2VYSA1H679X7";
 
 function getRows<T = Record<string, unknown>>(result: unknown): T[] {
   const r = result as { rows?: T[] };

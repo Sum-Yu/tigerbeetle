@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: tigerbeetle_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tigerbeetle
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tigerbeetle"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - tigerbeetle_postgres_data:/var/lib/postgresql/data
+      # Load pgledger SQL on first boot of a fresh volume
+      - ./pgledger/vendor/scoville-pgsql-ulid/uuid-to-ulid.sql:/docker-entrypoint-initdb.d/001_uuid_to_ulid.sql:ro
+      - ./pgledger/vendor/scoville-pgsql-ulid/ulid-to-uuid.sql:/docker-entrypoint-initdb.d/002_ulid_to_uuid.sql:ro
+      - ./pgledger/pgledger.sql:/docker-entrypoint-initdb.d/010_pgledger.sql:ro
+      - ./pgledger/migrations/add_email_to_pgledger_accounts.sql:/docker-entrypoint-initdb.d/020_pgledger_add_email.sql:ro
+
+  tigerbeetle:
+    image: ghcr.io/tigerbeetle/tigerbeetle
+    container_name: tigerbeetle
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - tigerbeetle_data:/data
+    # Docker 25+ blocks io_uring by default; TigerBeetle requires it.
+    security_opt:
+      - "seccomp=unconfined"
+    # macOS Docker may require memlock privileges (TigerBeetle docs).
+    cap_add:
+      - IPC_LOCK
+    command: >
+      start --addresses=0.0.0.0:3000 /data/0_0.tigerbeetle
+
+  tigerbeetle_format:
+    image: ghcr.io/tigerbeetle/tigerbeetle
+    container_name: tigerbeetle_format
+    profiles: ["init"]
+    volumes:
+      - tigerbeetle_data:/data
+    security_opt:
+      - "seccomp=unconfined"
+    cap_add:
+      - IPC_LOCK
+    command: >
+      format --cluster=0 --replica=0 --replica-count=1 --development /data/0_0.tigerbeetle
+
+volumes:
+  tigerbeetle_postgres_data:
+  tigerbeetle_data:

@@ -11,6 +11,7 @@ services:
     environment:
       POSTGRES_USER: pgledger
       POSTGRES_PASSWORD: pgledger
+      POSTGRES_DB: pgledger
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pgledger"]
       interval: 5s
@@ -19,7 +20,11 @@ services:
     volumes:
       - ./psqlrc:/root/.psqlrc
       - .:/code
+      - pgledger_postgres_data:/var/lib/postgresql/data
 
 networks:
   postgres-network:
     driver: bridge
+
+volumes:
+  pgledger_postgres_data:
