@@ -35,7 +35,10 @@ export default function Dashboard() {
     setError(null);
     setLoading(true);
     try {
-      const created = await createAccountApi({ name, currency });
+      const created = await createAccountApi({
+        name,
+        currency,
+      });
       setCreatedAccountId(created.id);
       if (!fromAccountId) setFromAccountId(created.id);
       if (!lookupAccountId) setLookupAccountId(created.id);
@@ -162,7 +165,8 @@ export default function Dashboard() {
           loading={loading}
           onChangeLookupAccountId={setLookupAccountId}
           onLoad={() =>
-            lookupAccountId.trim() && fetchAccountAndHistory(lookupAccountId.trim())
+            lookupAccountId.trim() &&
+            fetchAccountAndHistory(lookupAccountId.trim())
           }
         />
       </main>

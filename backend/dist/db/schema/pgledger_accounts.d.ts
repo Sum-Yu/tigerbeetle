@@ -56,9 +56,9 @@ export declare const pgledgerAccounts: import("drizzle-orm/pg-core").PgTableWith
         balance: import("drizzle-orm/pg-core").PgColumn<{
             name: "balance";
             tableName: "pgledger_accounts";
-            dataType: "string";
-            columnType: "PgNumeric";
-            data: string;
+            dataType: "bigint";
+            columnType: "PgBigInt64";
+            data: bigint;
             driverParam: string;
             notNull: true;
             hasDefault: true;

@@ -1,10 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  numeric,
-  bigint,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, numeric, bigint } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { pgledgerAccounts } from "./pgledger_accounts.js";
 import { pgledgerTransfers } from "./pgledger_transfers.js";
@@ -19,7 +13,7 @@ export const pgledgerEntries = pgTable("pgledger_entries", {
   transferId: text("transfer_id")
     .notNull()
     .references(() => pgledgerTransfers.id),
-  amount: numeric("amount", { precision: 20, scale: 4 }).notNull(),
+  amount: numeric("amount", { precision: 20, scale: 4 }).notNull().default("0"),
   accountPreviousBalance: numeric("account_previous_balance", {
     precision: 20,
     scale: 4,
@@ -29,7 +23,9 @@ export const pgledgerEntries = pgTable("pgledger_entries", {
     scale: 4,
   }).notNull(),
   accountVersion: bigint("account_version", { mode: "number" }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type PgledgerEntry = typeof pgledgerEntries.$inferSelect;

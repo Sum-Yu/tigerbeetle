@@ -3,7 +3,9 @@ const API_BASE_URL =
 const PGLEDGER_BASE = `${API_BASE_URL}/pgledger`;
 
 // Normalize API response: Postgres views return snake_case; we use camelCase in app
-function toCamelCase<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+function toCamelCase<T extends Record<string, unknown>>(
+  row: T,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(row)) {
     const camel = k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
@@ -53,49 +55,63 @@ export async function createAccountApi(body: {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { error?: string }).error || "Failed to create account");
+    throw new Error(
+      (data as { error?: string }).error || "Failed to create account",
+    );
   }
   const data = (await res.json()) as Record<string, unknown>;
   return toCamelCase(data) as unknown as PgledgerAccount;
 }
 
-export async function listAccountsApi(): Promise<{ accounts: PgledgerAccount[] }> {
+export async function listAccountsApi(): Promise<{
+  accounts: PgledgerAccount[];
+}> {
   const res = await fetch(`${PGLEDGER_BASE}/accounts`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { error?: string }).error || "Failed to list accounts");
+    throw new Error(
+      (data as { error?: string }).error || "Failed to list accounts",
+    );
   }
   const data = (await res.json()) as { accounts: Record<string, unknown>[] };
   return {
-    accounts: (data.accounts || []).map((a) => toCamelCase(a) as unknown as PgledgerAccount),
+    accounts: (data.accounts || []).map(
+      (a) => toCamelCase(a) as unknown as PgledgerAccount,
+    ),
   };
 }
 
 export async function getAccountApi(id: string): Promise<PgledgerAccount> {
-  const res = await fetch(`${PGLEDGER_BASE}/accounts/${encodeURIComponent(id)}`);
+  const res = await fetch(
+    `${PGLEDGER_BASE}/accounts/${encodeURIComponent(id)}`,
+  );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     if (res.status === 404) throw new Error("Account not found");
-    throw new Error((data as { error?: string }).error || "Failed to get account");
+    throw new Error(
+      (data as { error?: string }).error || "Failed to get account",
+    );
   }
   const data = (await res.json()) as Record<string, unknown>;
   return toCamelCase(data) as unknown as PgledgerAccount;
 }
 
 export async function getAccountTransfersApi(
-  accountId: string
+  accountId: string,
 ): Promise<{ transfers: PgledgerTransfer[] }> {
   const res = await fetch(
-    `${PGLEDGER_BASE}/accounts/${encodeURIComponent(accountId)}/transfers`
+    `${PGLEDGER_BASE}/accounts/${encodeURIComponent(accountId)}/transfers`,
   );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { error?: string }).error || "Failed to get transfers");
+    throw new Error(
+      (data as { error?: string }).error || "Failed to get transfers",
+    );
   }
   const data = (await res.json()) as { transfers: Record<string, unknown>[] };
   return {
     transfers: (data.transfers || []).map(
-      (t) => toCamelCase(t) as unknown as PgledgerTransfer
+      (t) => toCamelCase(t) as unknown as PgledgerTransfer,
     ),
   };
 }
@@ -123,7 +139,9 @@ export async function createTransferApi(input: {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { error?: string }).error || "Failed to create transfer");
+    throw new Error(
+      (data as { error?: string }).error || "Failed to create transfer",
+    );
   }
   const data = (await res.json()) as Record<string, unknown>;
   return toCamelCase(data) as unknown as PgledgerTransfer;

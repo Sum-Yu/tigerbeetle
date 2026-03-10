@@ -40,7 +40,9 @@ export default function CreateAccountPg({
         />
         <button
           className="tb-button tb-button-primary"
-          onClick={() => onCreateAccount(name.trim(), currency.trim() || undefined)}
+          onClick={() =>
+            onCreateAccount(name.trim(), currency.trim() || undefined)
+          }
           disabled={loading || !name.trim()}
         >
           {loading ? "Working..." : "Create Account"}

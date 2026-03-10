@@ -7,12 +7,12 @@ import { eq, or, desc } from "drizzle-orm";
 const router = Router();
 
 // In-memory cache for treasury account ID (or set PGLEDGER_TREASURY_ACCOUNT_ID in env)
-let treasuryAccountId: string | null =
-  process.env.PGLEDGER_TREASURY_ACCOUNT_ID ?? null;
+// let treasuryAccountId: string | null =
+//   process.env.PGLEDGER_TREASURY_ACCOUNT_ID ?? null;
 
-function getRows<T = Record<string, unknown>>(
-  result: unknown
-): T[] {
+let treasuryAccountId: string | null = "pgla_01KKAP7BSEFDXV2VYSA1H679X7";
+
+function getRows<T = Record<string, unknown>>(result: unknown): T[] {
   const r = result as { rows?: T[] };
   return Array.isArray(r?.rows) ? r.rows : [];
 }
@@ -21,7 +21,7 @@ async function getOrCreateTreasuryAccountId(): Promise<string> {
   if (treasuryAccountId) return treasuryAccountId;
 
   const result = await db.execute(
-    sql`SELECT * FROM pgledger_create_account('Treasury', 'USD', true, true, null)`
+    sql`SELECT * FROM pgledger_create_account('Treasury', '', 'USD', true, true, null)`,
   );
   const rows = getRows<Record<string, unknown>>(result);
   const row = rows[0];
@@ -39,7 +39,7 @@ router.post("/accounts", async (req, res) => {
     const {
       name,
       currency = "USD",
-      allowNegativeBalance = true,
+      allowNegativeBalance = false,
       allowPositiveBalance = true,
       metadata,
     } = req.body as {
@@ -55,7 +55,16 @@ router.post("/accounts", async (req, res) => {
     }
 
     const result = await db.execute(
-      sql`SELECT * FROM pgledger_create_account(${name.trim()}, ${currency}, ${allowNegativeBalance}, ${allowPositiveBalance}, ${metadata ?? null})`
+      sql`
+        SELECT *
+        FROM pgledger_create_account(
+          ${name.trim()}::text,
+          ${currency}::text,
+          ${allowNegativeBalance}::boolean,
+          ${allowPositiveBalance}::boolean,
+          ${metadata == null ? null : JSON.stringify(metadata)}::jsonb
+        )
+      `,
     );
     const rows = getRows(result);
     const account = rows[0];
@@ -65,7 +74,8 @@ router.post("/accounts", async (req, res) => {
     return res.status(201).json(account);
   } catch (err: unknown) {
     console.error("pgledger create account error:", err);
-    const message = err instanceof Error ? err.message : "Failed to create account";
+    const message =
+      err instanceof Error ? err.message : "Failed to create account";
     return res.status(500).json({ error: message });
   }
 });
@@ -109,8 +119,8 @@ router.get("/accounts/:id/transfers", async (req, res) => {
       .where(
         or(
           eq(pgledgerTransfers.fromAccountId, id),
-          eq(pgledgerTransfers.toAccountId, id)
-        )
+          eq(pgledgerTransfers.toAccountId, id),
+        ),
       )
       .orderBy(desc(pgledgerTransfers.createdAt));
     return res.json({ transfers });
@@ -137,11 +147,13 @@ router.post("/transfers", async (req, res) => {
 
     const amountNum = typeof amount === "string" ? amount : String(amount);
     if (Number(amountNum) <= 0) {
-      return res.status(400).json({ error: "Amount must be greater than zero" });
+      return res
+        .status(400)
+        .json({ error: "Amount must be greater than zero" });
     }
 
     const result = await db.execute(
-      sql`SELECT * FROM pgledger_create_transfer(${fromAccountId}, ${toAccountId}, ${amountNum}::numeric, null, null)`
+      sql`SELECT * FROM pgledger_create_transfer(${fromAccountId}, ${toAccountId}, ${amountNum}::numeric, null, null)`,
     );
     const rows = getRows(result);
     const transfer = rows[0];
@@ -173,13 +185,15 @@ router.post("/topup", async (req, res) => {
 
     const amountNum = typeof amount === "string" ? amount : String(amount);
     if (Number(amountNum) <= 0) {
-      return res.status(400).json({ error: "Amount must be greater than zero" });
+      return res
+        .status(400)
+        .json({ error: "Amount must be greater than zero" });
     }
 
     const debitAccountId = await getOrCreateTreasuryAccountId();
 
     const result = await db.execute(
-      sql`SELECT * FROM pgledger_create_transfer(${debitAccountId}, ${creditAccountId}, ${amountNum}::numeric, null, null)`
+      sql`SELECT * FROM pgledger_create_transfer(${debitAccountId}, ${creditAccountId}, ${amountNum}::numeric, null, null)`,
     );
     const rows = getRows(result);
     const transfer = rows[0];

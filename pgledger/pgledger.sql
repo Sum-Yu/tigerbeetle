@@ -42,6 +42,7 @@ $$ LANGUAGE sql VOLATILE;
 CREATE TABLE pgledger_accounts (
     id TEXT PRIMARY KEY DEFAULT pgledger_generate_id('pgla'),
     name TEXT NOT NULL,
+    email TEXT NOT NULL,
     currency TEXT NOT NULL,
     balance NUMERIC NOT NULL DEFAULT 0,
     version BIGINT NOT NULL DEFAULT 0,
@@ -85,6 +86,7 @@ CREATE VIEW pgledger_accounts_view AS
 SELECT
     id,
     name,
+    email,
     currency,
     balance,
     version,
@@ -123,6 +125,7 @@ INNER JOIN pgledger_transfers t ON e.transfer_id = t.id;
 
 CREATE OR REPLACE FUNCTION pgledger_create_account(
     name TEXT,
+    email TEXT,
     currency TEXT,
     allow_negative_balance BOOLEAN DEFAULT TRUE,
     allow_positive_balance BOOLEAN DEFAULT TRUE,
@@ -132,8 +135,8 @@ RETURNS SETOF PGLEDGER_ACCOUNTS_VIEW
 AS $$
 BEGIN
     RETURN QUERY
-    INSERT INTO pgledger_accounts (name, currency, allow_negative_balance, allow_positive_balance, metadata, created_at, updated_at)
-    VALUES (name, currency, allow_negative_balance, allow_positive_balance, metadata, now(), now())
+    INSERT INTO pgledger_accounts (name, email, currency, allow_negative_balance, allow_positive_balance, metadata, created_at, updated_at)
+    VALUES (name, COALESCE(email, ''), currency, allow_negative_balance, allow_positive_balance, metadata, now(), now())
     RETURNING *;
 END;
 $$ LANGUAGE plpgsql;
