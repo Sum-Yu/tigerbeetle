@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb, check, bigint, } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, numeric, jsonb, check, } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { pgledgerAccounts } from "./pgledger_accounts.js";
 export const pgledgerTransfers = pgTable("pgledger_transfers", {
@@ -11,7 +11,9 @@ export const pgledgerTransfers = pgTable("pgledger_transfers", {
     toAccountId: text("to_account_id")
         .notNull()
         .references(() => pgledgerAccounts.id),
-    amount: bigint("amount", { mode: "bigint" }).notNull().default(0n),
+    amount: numeric("amount", { precision: 20, scale: 4 })
+        .notNull()
+        .default("0"),
     createdAt: timestamp("created_at", { withTimezone: true })
         .notNull()
         .defaultNow(),

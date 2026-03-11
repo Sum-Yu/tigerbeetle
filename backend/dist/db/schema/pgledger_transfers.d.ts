@@ -56,9 +56,9 @@ export declare const pgledgerTransfers: import("drizzle-orm/pg-core").PgTableWit
         amount: import("drizzle-orm/pg-core").PgColumn<{
             name: "amount";
             tableName: "pgledger_transfers";
-            dataType: "bigint";
-            columnType: "PgBigInt64";
-            data: bigint;
+            dataType: "string";
+            columnType: "PgNumeric";
+            data: string;
             driverParam: string;
             notNull: true;
             hasDefault: true;

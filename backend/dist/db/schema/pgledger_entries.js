@@ -12,7 +12,7 @@ export const pgledgerEntries = pgTable("pgledger_entries", {
     transferId: text("transfer_id")
         .notNull()
         .references(() => pgledgerTransfers.id),
-    amount: bigint("amount", { mode: "bigint" }).notNull().default(0n),
+    amount: numeric("amount", { precision: 20, scale: 4 }).notNull().default("0"),
     accountPreviousBalance: numeric("account_previous_balance", {
         precision: 20,
         scale: 4,

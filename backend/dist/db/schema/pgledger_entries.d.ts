@@ -56,9 +56,9 @@ export declare const pgledgerEntries: import("drizzle-orm/pg-core").PgTableWithC
         amount: import("drizzle-orm/pg-core").PgColumn<{
             name: "amount";
             tableName: "pgledger_entries";
-            dataType: "bigint";
-            columnType: "PgBigInt64";
-            data: bigint;
+            dataType: "string";
+            columnType: "PgNumeric";
+            data: string;
             driverParam: string;
             notNull: true;
             hasDefault: true;

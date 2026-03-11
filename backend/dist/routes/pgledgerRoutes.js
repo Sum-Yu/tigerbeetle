@@ -5,7 +5,9 @@ import { pgledgerAccounts, pgledgerTransfers } from "../db/schema/index.js";
 import { eq, or, desc } from "drizzle-orm";
 const router = Router();
 // In-memory cache for treasury account ID (or set PGLEDGER_TREASURY_ACCOUNT_ID in env)
-let treasuryAccountId = process.env.PGLEDGER_TREASURY_ACCOUNT_ID ?? null;
+// let treasuryAccountId: string | null =
+//   process.env.PGLEDGER_TREASURY_ACCOUNT_ID ?? null;
+let treasuryAccountId = "pgla_01KKAP7BSEFDXV2VYSA1H679X7";
 function getRows(result) {
     const r = result;
     return Array.isArray(r?.rows) ? r.rows : [];
@@ -26,11 +28,20 @@ async function getOrCreateTreasuryAccountId() {
 // Create account (pgledger)
 router.post("/accounts", async (req, res) => {
     try {
-        const { name, currency = "USD", allowNegativeBalance = true, allowPositiveBalance = false, metadata, } = req.body;
+        const { name, currency = "USD", allowNegativeBalance = false, allowPositiveBalance = true, metadata, } = req.body;
         if (!name || typeof name !== "string" || !name.trim()) {
             return res.status(400).json({ error: "name is required" });
         }
-        const result = await db.execute(sql `SELECT * FROM pgledger_create_account(${name.trim()}, ${currency}, ${allowNegativeBalance}, ${allowPositiveBalance}, ${metadata ?? null})`);
+        const result = await db.execute(sql `
+        SELECT *
+        FROM pgledger_create_account(
+          ${name.trim()}::text,
+          ${currency}::text,
+          ${allowNegativeBalance}::boolean,
+          ${allowPositiveBalance}::boolean,
+          ${metadata == null ? null : JSON.stringify(metadata)}::jsonb
+        )
+      `);
         const rows = getRows(result);
         const account = rows[0];
         if (!account) {
