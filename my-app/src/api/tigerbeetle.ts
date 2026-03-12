@@ -31,6 +31,7 @@ export type User = {
 export async function createAccountApi(body: {
   email: string;
   name?: string;
+  currency?: "SGD" | "USD";
 }): Promise<{ accountId: string }> {
   const res = await fetch(`${API_BASE_URL}/users/create-user`, {
     method: "POST",
@@ -56,6 +57,7 @@ export async function createTransferApi(input: {
   debitAccountId: string;
   creditAccountId: string;
   amount: string;
+  currency?: "SGD" | "USD";
 }): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/transfers`, {
     method: "POST",
@@ -79,6 +81,7 @@ export async function topUpAccountApi(input: {
   creditAccountId: string;
   amount: string;
   debitAccountId?: string;
+  currency?: "SGD" | "USD";
 }): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/topup`, {
     method: "POST",
@@ -87,8 +90,11 @@ export async function topUpAccountApi(input: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Failed to top up account");
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    throw new Error(body.message || body.error || "Failed to top up account");
   }
 
   await res.json().catch(() => undefined);

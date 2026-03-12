@@ -1,20 +1,26 @@
 import "../App.css";
 
+type TopUpCurrency = "SGD" | "USD";
+
 type TopUpAmountProps = {
   accountId: string;
   amount: string;
+  currency: TopUpCurrency;
   loading: boolean;
   onChangeAccountId: (value: string) => void;
   onChangeAmount: (value: string) => void;
+  onChangeCurrency: (value: TopUpCurrency) => void;
   onTopUp: () => void | Promise<void>;
 };
 
 function TopUpAmount({
   accountId,
   amount,
+  currency,
   loading,
   onChangeAccountId,
   onChangeAmount,
+  onChangeCurrency,
   onTopUp,
 }: TopUpAmountProps) {
   return (
@@ -22,7 +28,7 @@ function TopUpAmount({
       <div className="tb-card">
         <h2 className="tb-card-title">Bank / Treasury Account</h2>
         <p className="tb-card-description">
-          Current Treasury Account ID : 2143405532528893555931184785396120149
+          SGD ledger 1 / USD ledger 2 — treasury is created per currency.
         </p>
       </div>
       <div className="tb-card">
@@ -31,6 +37,17 @@ function TopUpAmount({
           Add funds to an account from the configured funding account.
         </p>
         <div className="tb-form">
+          <label className="tb-field">
+            <span className="tb-field-label">Currency</span>
+            <select
+              className="tb-input"
+              value={currency}
+              onChange={(e) => onChangeCurrency(e.target.value as TopUpCurrency)}
+            >
+              <option value="SGD">SGD (Singapore)</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
           <label className="tb-field">
             <span className="tb-field-label">Account ID</span>
             <input

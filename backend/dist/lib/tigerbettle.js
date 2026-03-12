@@ -8,7 +8,8 @@ export const tbClient = createClient({
     cluster_id: TB_CLUSTER_ID,
     replica_addresses: TB_ADDRESSES,
 });
-export function buildTbAccount() {
+/** Ledger 1 = SGD (Singapore), Ledger 2 = USD */
+export function buildTbAccount(ledger = 1) {
     return {
         id: id(),
         debits_pending: 0n,
@@ -19,7 +20,7 @@ export function buildTbAccount() {
         user_data_64: 0n,
         user_data_32: 0,
         reserved: 0,
-        ledger: 1,
+        ledger,
         code: 1,
         flags: AccountFlags.history,
         timestamp: 0n,

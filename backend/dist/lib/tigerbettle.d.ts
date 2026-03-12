@@ -1,6 +1,7 @@
 import { AccountFlags } from "tigerbeetle-node";
 export declare const tbClient: import("tigerbeetle-node").Client;
-export declare function buildTbAccount(): {
+/** Ledger 1 = SGD (Singapore), Ledger 2 = USD */
+export declare function buildTbAccount(ledger?: number): {
     id: bigint;
     debits_pending: bigint;
     debits_posted: bigint;

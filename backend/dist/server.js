@@ -16,11 +16,32 @@ const client = createClient({
     cluster_id: BigInt(process.env.TB_CLUSTER_ID ?? 0),
     replica_addresses: [process.env.TB_ADDRESS ?? "3000"],
 });
-// Create A Bank Account (Provider Account)
-let TREASURY_ACCOUNT_ID = "2143405532528893555931184785396120149";
-async function getOrCreateTreasuryAccountId() {
-    if (TREASURY_ACCOUNT_ID) {
-        return TREASURY_ACCOUNT_ID;
+// TigerBeetle has no "currency" field — it uses ledgers. We map:
+// Ledger 1 = SGD (Singapore), Ledger 2 = USD. Each account belongs to one ledger;
+// transfers/topups must use the same ledger as the account.
+const CURRENCY_LEDGER = { SGD: 1, USD: 2 };
+function currencyToLedger(currency) {
+    const c = (currency || "SGD").toUpperCase();
+    if (c === "USD")
+        return CURRENCY_LEDGER.USD;
+    return CURRENCY_LEDGER.SGD;
+}
+// Treasury account IDs: ledger 1 (SGD) and ledger 2 (USD)
+let TREASURY_ACCOUNT_ID_SGD = process.env.TB_TREASURY_ACCOUNT_ID ?? "2143405532528893555931184785396120149";
+let TREASURY_ACCOUNT_ID_USD = process.env.TB_TREASURY_ACCOUNT_ID_USD ?? null;
+async function getOrCreateTreasuryAccountId(ledger) {
+    const isSGD = ledger === 1;
+    let existing = isSGD ? TREASURY_ACCOUNT_ID_SGD : TREASURY_ACCOUNT_ID_USD;
+    if (existing) {
+        const accounts = await client.lookupAccounts([BigInt(existing)]);
+        if (accounts?.length > 0 && accounts[0].ledger === ledger) {
+            return existing;
+        }
+        existing = null;
+        if (isSGD)
+            TREASURY_ACCOUNT_ID_SGD = null;
+        else
+            TREASURY_ACCOUNT_ID_USD = null;
     }
     const account = {
         id: id(),
@@ -32,7 +53,7 @@ async function getOrCreateTreasuryAccountId() {
         user_data_64: 0n,
         user_data_32: 0,
         reserved: 0,
-        ledger: 1,
+        ledger,
         code: 1,
         flags: AccountFlags.history,
         timestamp: 0n,
@@ -42,10 +63,15 @@ async function getOrCreateTreasuryAccountId() {
         console.error("Failed to create treasury account:", errors);
         throw new Error("Failed to create treasury account");
     }
-    TREASURY_ACCOUNT_ID = account.id.toString();
-    console.log(`Created treasury (bank) account with id=${TREASURY_ACCOUNT_ID}. ` +
-        "You can set TB_TREASURY_ACCOUNT_ID to reuse it persistently.");
-    return TREASURY_ACCOUNT_ID;
+    const idStr = account.id.toString();
+    if (isSGD) {
+        TREASURY_ACCOUNT_ID_SGD = idStr;
+    }
+    else {
+        TREASURY_ACCOUNT_ID_USD = idStr;
+    }
+    console.log(`Created treasury (${isSGD ? "SGD" : "USD"}) account with id=${idStr}.`);
+    return idStr;
 }
 function jsonifyBigInts(value) {
     return JSON.parse(JSON.stringify(value, (_, v) => typeof v === "bigint" ? v.toString() : v));
@@ -132,13 +158,27 @@ app.get("/api/accounts/:id/transfers", async (req, res) => {
 // Top up an account from a configured source (e.g. treasury)
 app.post("/api/topup", async (req, res) => {
     try {
-        const { creditAccountId, amount, debitAccountId } = req.body;
+        const { creditAccountId, amount, debitAccountId, currency } = req.body;
         if (!creditAccountId || amount == null) {
             return res
                 .status(400)
                 .json({ error: "creditAccountId and amount are required" });
         }
-        const configuredDebit = debitAccountId ?? (await getOrCreateTreasuryAccountId());
+        const ledger = currencyToLedger(currency ?? "SGD");
+        const creditAccounts = await client.lookupAccounts([BigInt(creditAccountId)]);
+        if (!creditAccounts?.length) {
+            return res.status(404).json({ error: "Credit account not found" });
+        }
+        const creditLedger = creditAccounts[0].ledger;
+        if (creditLedger !== ledger) {
+            const accountCurrency = creditLedger === 2 ? "USD" : "SGD";
+            const requestedCurrency = ledger === 2 ? "USD" : "SGD";
+            return res.status(400).json({
+                error: "Currency mismatch",
+                message: `This account is in ${accountCurrency} (ledger ${creditLedger}). Use currency: "${accountCurrency}" to top up, not "${requestedCurrency}".`,
+            });
+        }
+        const configuredDebit = debitAccountId ?? (await getOrCreateTreasuryAccountId(ledger));
         const transfer = {
             id: id(),
             debit_account_id: BigInt(configuredDebit),
@@ -149,7 +189,7 @@ app.post("/api/topup", async (req, res) => {
             user_data_64: 0n,
             user_data_32: 0,
             timeout: 0,
-            ledger: 1,
+            ledger,
             code: 1,
             flags: 0,
             timestamp: 0n,
@@ -164,7 +204,30 @@ app.post("/api/topup", async (req, res) => {
                     message: "Your account does not have enough balance for this transfer.",
                 });
             }
-            return res.status(400).json({ errors: jsonifyBigInts(errors) });
+            if (err.result === CreateTransferError.transfer_must_have_the_same_ledger_as_accounts ||
+                err.result === CreateTransferError.accounts_must_have_the_same_ledger) {
+                return res.status(400).json({
+                    error: "Currency mismatch",
+                    message: "Account is in a different currency (ledger). Use the same currency as the account (SGD = ledger 1, USD = ledger 2).",
+                });
+            }
+            if (err.result === CreateTransferError.debit_account_not_found) {
+                return res.status(500).json({
+                    error: "Treasury account missing",
+                    message: "SGD treasury account was not found in the ledger. Restart the backend to auto-create it, then try again.",
+                });
+            }
+            if (err.result === CreateTransferError.credit_account_not_found) {
+                return res.status(404).json({
+                    error: "Account not found",
+                    message: "The credit account does not exist in the ledger.",
+                });
+            }
+            return res.status(400).json({
+                error: "Transfer failed",
+                message: "Transfer was rejected. Ensure both accounts use the same currency (SGD or USD) and the debit account has enough balance.",
+                errors: jsonifyBigInts(errors),
+            });
         }
         res.json({ transferId: transfer.id.toString() });
     }
@@ -176,7 +239,7 @@ app.post("/api/topup", async (req, res) => {
 // Create a transfer between two accounts
 app.post("/api/transfers", async (req, res) => {
     try {
-        const { debitAccountId, creditAccountId, amount } = req.body;
+        const { debitAccountId, creditAccountId, amount, currency } = req.body;
         if (!debitAccountId || !creditAccountId || amount == null) {
             return res.status(400).json({
                 error: "debitAccountId, creditAccountId and amount are required",
@@ -188,12 +251,27 @@ app.post("/api/transfers", async (req, res) => {
                 error: "Amount must be greater than zero",
             });
         }
+        const ledger = currencyToLedger(currency ?? "SGD");
         // Enforce balance >= 0: debit account must have at least `amount` available
         const debitAccounts = await client.lookupAccounts([BigInt(debitAccountId)]);
         if (!debitAccounts || debitAccounts.length === 0) {
             return res.status(404).json({ error: "Debit account not found" });
         }
         const debitAccount = debitAccounts[0];
+        if (debitAccount.ledger !== ledger) {
+            return res.status(400).json({
+                error: "Debit account is not in the selected currency (ledger). Use an account created for " + (ledger === 1 ? "SGD" : "USD") + ".",
+            });
+        }
+        const creditAccounts = await client.lookupAccounts([BigInt(creditAccountId)]);
+        if (!creditAccounts || creditAccounts.length === 0) {
+            return res.status(404).json({ error: "Credit account not found" });
+        }
+        if (creditAccounts[0].ledger !== ledger) {
+            return res.status(400).json({
+                error: "Credit account is not in the selected currency (ledger). Use an account created for " + (ledger === 1 ? "SGD" : "USD") + ".",
+            });
+        }
         const balance = debitAccount.credits_posted - debitAccount.debits_posted;
         if (balance < amountBigInt) {
             return res.status(400).json({
@@ -212,7 +290,7 @@ app.post("/api/transfers", async (req, res) => {
             user_data_64: 0n,
             user_data_32: 0,
             timeout: 0,
-            ledger: 1,
+            ledger,
             code: 1,
             flags: 0,
             timestamp: 0n,

@@ -3,7 +3,7 @@ import { tbClient, buildTbAccount } from "../../lib/tigerbettle.js";
 import { db } from "../../db/index.js";
 export default async function createUser(req, res) {
     try {
-        const { email, name } = req.body;
+        const { email, name, currency } = req.body;
         if (!email)
             return res.status(400).json({ error: "email is required" });
         const existing = await db.query.user.findFirst({
@@ -11,8 +11,10 @@ export default async function createUser(req, res) {
         });
         if (existing)
             return res.status(409).json({ error: "email already exists" });
+        // Ledger 1 = SGD, 2 = USD
+        const ledger = (currency || "SGD").toUpperCase() === "USD" ? 2 : 1;
         // 1) Create TigerBeetle account
-        const account = buildTbAccount();
+        const account = buildTbAccount(ledger);
         const errors = await tbClient.createAccounts([account]);
         if (errors.length > 0) {
             return res.status(400).json({ errors });

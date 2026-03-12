@@ -19,8 +19,10 @@ function App() {
   const [debitAccountId, setDebitAccountId] = useState("");
   const [creditAccountId, setCreditAccountId] = useState("");
   const [amount, setAmount] = useState("0");
+  const [transferCurrency, setTransferCurrency] = useState<"SGD" | "USD">("SGD");
   const [topUpAccountId, setTopUpAccountId] = useState("");
   const [topUpAmount, setTopUpAmount] = useState("0");
+  const [topUpCurrency, setTopUpCurrency] = useState<"SGD" | "USD">("SGD");
   const [lookupAccountId, setLookupAccountId] = useState("");
   const [accountInfo, setAccountInfo] = useState<AccountSummary | null>(null);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -28,11 +30,19 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
 
-  async function createAccount(email: string, name?: string) {
+  async function createAccount(
+    email: string,
+    name?: string,
+    currency?: "SGD" | "USD"
+  ) {
     setError(null);
     setLoading(true);
     try {
-      const { accountId } = await createAccountApi({ email, name });
+      const { accountId } = await createAccountApi({
+        email,
+        name,
+        currency: currency ?? "SGD",
+      });
       setCreatedAccountId(accountId);
       if (!debitAccountId) {
         setDebitAccountId(accountId);
@@ -56,6 +66,7 @@ function App() {
         debitAccountId,
         creditAccountId,
         amount,
+        currency: transferCurrency,
       });
       setTransferError(null);
       // Refresh account + transfers for the debit account if it matches lookup
@@ -78,6 +89,7 @@ function App() {
       await topUpAccountApi({
         creditAccountId: topUpAccountId,
         amount: topUpAmount,
+        currency: topUpCurrency,
       });
 
       if (lookupAccountId === topUpAccountId && topUpAccountId) {
@@ -142,9 +154,11 @@ function App() {
         <TopUpAmount
           accountId={topUpAccountId}
           amount={topUpAmount}
+          currency={topUpCurrency}
           loading={loading}
           onChangeAccountId={setTopUpAccountId}
           onChangeAmount={setTopUpAmount}
+          onChangeCurrency={setTopUpCurrency}
           onTopUp={topUpAccount}
         />
         <h1 className="text-2xl font-bold ml-2">Step 3: Transfer Amount</h1>
@@ -152,11 +166,13 @@ function App() {
           debitAccountId={debitAccountId}
           creditAccountId={creditAccountId}
           amount={amount}
+          currency={transferCurrency}
           loading={loading}
           error={transferError}
           onChangeDebitAccountId={setDebitAccountId}
           onChangeCreditAccountId={setCreditAccountId}
           onChangeAmount={setAmount}
+          onChangeCurrency={setTransferCurrency}
           onTransferAmount={createTransfer}
         />
 
