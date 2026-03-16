@@ -31,59 +31,6 @@ const client = createClient({
   replica_addresses: [process.env.TB_ADDRESS ?? "3000"],
 });
 
-// TigerBeetle has no "currency" field — it uses ledgers. We map:
-// Ledger 1 = SGD (Singapore), Ledger 2 = USD. Each account belongs to one ledger;
-// transfers/topups must use the same ledger as the account.
-const CURRENCY_LEDGER = { SGD: 1, USD: 2 } as const;
-
-function currencyToLedger(currency: string): number {
-  const c = (currency || "SGD").toUpperCase();
-  if (c === "USD") return CURRENCY_LEDGER.USD;
-  return CURRENCY_LEDGER.SGD;
-}
-
-type Currency = keyof typeof CURRENCY_LEDGER;
-
-const FX_RATES = {
-  SGD_USD: { num: 78n, den: 100n }, // 0.78
-  USD_SGD: { num: 128n, den: 100n }, // 1.28
-} as const;
-
-function fxConvertAmount(
-  amount: bigint,
-  fromCurrency: Currency,
-  toCurrency: Currency,
-): { converted: bigint; rate_num: bigint; rate_den: bigint; direction: number } {
-  if (fromCurrency === toCurrency) {
-    return { converted: amount, rate_num: 1n, rate_den: 1n, direction: 0 };
-  }
-  if (fromCurrency === "SGD" && toCurrency === "USD") {
-    const { num, den } = FX_RATES.SGD_USD;
-    return {
-      converted: (amount * num) / den,
-      rate_num: num,
-      rate_den: den,
-      direction: 1,
-    };
-  }
-  if (fromCurrency === "USD" && toCurrency === "SGD") {
-    const { num, den } = FX_RATES.USD_SGD;
-    return {
-      converted: (amount * num) / den,
-      rate_num: num,
-      rate_den: den,
-      direction: 2,
-    };
-  }
-  // Future-proofing if more currencies are added later.
-  throw new Error(`Unsupported FX pair: ${fromCurrency} -> ${toCurrency}`);
-}
-
-function normalizeCurrency(currency?: string): Currency {
-  const c = (currency || "SGD").toUpperCase();
-  return c === "USD" ? "USD" : "SGD";
-}
-
 // Treasury account IDs: ledger 1 (SGD) and ledger 2 (USD)
 let TREASURY_ACCOUNT_ID_SGD: string | null =
   process.env.TB_TREASURY_ACCOUNT_ID_SGD ?? null;
@@ -400,6 +347,64 @@ app.post("/api/transfers", async (req, res) => {
   }
 });
 
+// TigerBeetle has no "currency" field — it uses ledgers. We map:
+// Ledger 1 = SGD (Singapore), Ledger 2 = USD. Each account belongs to one ledger;
+// transfers/topups must use the same ledger as the account.
+const CURRENCY_LEDGER = { SGD: 1, USD: 2 } as const;
+
+function currencyToLedger(currency: string): number {
+  const c = (currency || "SGD").toUpperCase();
+  if (c === "USD") return CURRENCY_LEDGER.USD;
+  return CURRENCY_LEDGER.SGD;
+}
+
+type Currency = keyof typeof CURRENCY_LEDGER;
+
+const FX_RATES = {
+  SGD_USD: { num: 78n, den: 100n }, // 0.78
+  USD_SGD: { num: 128n, den: 100n }, // 1.28
+} as const;
+
+function fxConvertAmount(
+  amount: bigint,
+  fromCurrency: Currency,
+  toCurrency: Currency,
+): {
+  converted: bigint;
+  rate_num: bigint;
+  rate_den: bigint;
+  direction: number;
+} {
+  if (fromCurrency === toCurrency) {
+    return { converted: amount, rate_num: 1n, rate_den: 1n, direction: 0 };
+  }
+  if (fromCurrency === "SGD" && toCurrency === "USD") {
+    const { num, den } = FX_RATES.SGD_USD;
+    return {
+      converted: (amount * num) / den,
+      rate_num: num,
+      rate_den: den,
+      direction: 1,
+    };
+  }
+  if (fromCurrency === "USD" && toCurrency === "SGD") {
+    const { num, den } = FX_RATES.USD_SGD;
+    return {
+      converted: (amount * num) / den,
+      rate_num: num,
+      rate_den: den,
+      direction: 2,
+    };
+  }
+  // Future-proofing if more currencies are added later.
+  throw new Error(`Unsupported FX pair: ${fromCurrency} -> ${toCurrency}`);
+}
+
+function normalizeCurrency(currency?: string): Currency {
+  const c = (currency || "SGD").toUpperCase();
+  return c === "USD" ? "USD" : "SGD";
+}
+
 // Create a transfer between two accounts with FX conversion (SGD <-> USD)
 // This is implemented as two TigerBeetle transfers (one per ledger) via treasury accounts.
 app.post("/api/transfers/fx", async (req, res) => {
@@ -426,7 +431,9 @@ app.post("/api/transfers/fx", async (req, res) => {
 
     const amountFrom = BigInt(amount);
     if (amountFrom <= 0n) {
-      return res.status(400).json({ error: "Amount must be greater than zero" });
+      return res
+        .status(400)
+        .json({ error: "Amount must be greater than zero" });
     }
 
     const fromC = normalizeCurrency(fromCurrency);
@@ -477,8 +484,12 @@ app.post("/api/transfers/fx", async (req, res) => {
       });
     }
 
-    const { converted: amountTo, rate_num, rate_den, direction } =
-      fxConvertAmount(amountFrom, fromC, toC);
+    const {
+      converted: amountTo,
+      rate_num,
+      rate_den,
+      direction,
+    } = fxConvertAmount(amountFrom, fromC, toC);
 
     if (amountTo <= 0n) {
       return res.status(400).json({
