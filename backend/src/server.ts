@@ -162,10 +162,24 @@ app.post("/api/topup", async (req, res) => {
         .json({ error: "creditAccountId and amount are required" });
     }
 
+    // Validate that the provided IDs are numeric strings before converting to BigInt
+    let creditIdBigInt: bigint;
+    let debitIdBigInt: bigint | null = null;
+    try {
+      creditIdBigInt = BigInt(creditAccountId);
+      if (debitAccountId) {
+        debitIdBigInt = BigInt(debitAccountId);
+      }
+    } catch {
+      return res.status(400).json({
+        error: "Invalid account ID format",
+        message:
+          "Account IDs must be numeric TigerBeetle account IDs (no spaces or letters).",
+      });
+    }
+
     const ledger = currencyToLedger(currency ?? "SGD");
-    const creditAccounts = await client.lookupAccounts([
-      BigInt(creditAccountId),
-    ]);
+    const creditAccounts = await client.lookupAccounts([creditIdBigInt]);
     if (!creditAccounts?.length) {
       return res.status(404).json({ error: "Credit account not found" });
     }
@@ -180,12 +194,12 @@ app.post("/api/topup", async (req, res) => {
     }
 
     const configuredDebit =
-      debitAccountId ?? (await getOrCreateTreasuryAccountId(ledger));
+      debitIdBigInt?.toString() ?? (await getOrCreateTreasuryAccountId(ledger));
 
     const transfer = {
       id: id(),
       debit_account_id: BigInt(configuredDebit),
-      credit_account_id: BigInt(creditAccountId),
+      credit_account_id: creditIdBigInt,
       amount: BigInt(amount),
       pending_id: 0n,
       user_data_128: 0n,
@@ -405,22 +419,19 @@ function normalizeCurrency(currency?: string): Currency {
   return c === "USD" ? "USD" : "SGD";
 }
 
-// Create a transfer between two accounts with FX conversion (SGD <-> USD)
-// This is implemented as two TigerBeetle transfers (one per ledger) via treasury accounts.
+// Create a transfer between two accounts with FX conversion (SGD <-> USD).
+// Currencies are auto-detected from each account's ledger; the client does not need
+// to specify from/to currency.
 app.post("/api/transfers/fx", async (req, res) => {
   try {
     const {
       debitAccountId,
       creditAccountId,
       amount,
-      fromCurrency,
-      toCurrency,
     } = req.body as {
       debitAccountId?: string;
       creditAccountId?: string;
       amount?: string | number;
-      fromCurrency?: string;
-      toCurrency?: string;
     };
 
     if (!debitAccountId || !creditAccountId || amount == null) {
@@ -436,29 +447,12 @@ app.post("/api/transfers/fx", async (req, res) => {
         .json({ error: "Amount must be greater than zero" });
     }
 
-    const fromC = normalizeCurrency(fromCurrency);
-    const toC = normalizeCurrency(toCurrency);
-    if (fromC === toC) {
-      return res.status(400).json({
-        error: "Currencies must be different for FX transfer",
-        message: "Use /api/transfers for same-currency transfers.",
-      });
-    }
-
-    const fromLedger = currencyToLedger(fromC);
-    const toLedger = currencyToLedger(toC);
-
+    // Auto-detect currencies from the debit/credit account ledgers.
     const debitAccounts = await client.lookupAccounts([BigInt(debitAccountId)]);
     if (!debitAccounts?.length) {
       return res.status(404).json({ error: "Debit account not found" });
     }
     const debitAccount = debitAccounts[0];
-    if (debitAccount.ledger !== fromLedger) {
-      return res.status(400).json({
-        error: "Debit account currency mismatch",
-        message: `Debit account must be in ${fromC} (ledger ${fromLedger}).`,
-      });
-    }
 
     const creditAccounts = await client.lookupAccounts([
       BigInt(creditAccountId),
@@ -467,12 +461,20 @@ app.post("/api/transfers/fx", async (req, res) => {
       return res.status(404).json({ error: "Credit account not found" });
     }
     const creditAccount = creditAccounts[0];
-    if (creditAccount.ledger !== toLedger) {
+
+    const fromLedger = debitAccount.ledger;
+    const toLedger = creditAccount.ledger;
+
+    if (fromLedger === toLedger) {
       return res.status(400).json({
-        error: "Credit account currency mismatch",
-        message: `Credit account must be in ${toC} (ledger ${toLedger}).`,
+        error: "Currencies must be different for FX transfer",
+        message:
+          "Both accounts are in the same currency. Use /api/transfers for same-currency transfers.",
       });
     }
+
+    const fromC: Currency = fromLedger === 2 ? "USD" : "SGD";
+    const toC: Currency = toLedger === 2 ? "USD" : "SGD";
 
     const postedBalance =
       debitAccount.credits_posted - debitAccount.debits_posted;

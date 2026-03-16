@@ -81,8 +81,6 @@ export async function createFxTransferApi(input: {
   debitAccountId: string;
   creditAccountId: string;
   amount: string;
-  fromCurrency: "SGD" | "USD";
-  toCurrency: "SGD" | "USD";
 }): Promise<{
   fromCurrency: "SGD" | "USD";
   toCurrency: "SGD" | "USD";

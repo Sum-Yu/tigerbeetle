@@ -6,16 +6,12 @@ type TransferAmountDifCProps = {
   debitAccountId: string;
   creditAccountId: string;
   amount: string;
-  fromCurrency: FxCurrency;
-  toCurrency: FxCurrency;
   loading: boolean;
   error: string | null;
   lastRemark: string | null;
   onChangeDebitAccountId: (value: string) => void;
   onChangeCreditAccountId: (value: string) => void;
   onChangeAmount: (value: string) => void;
-  onChangeFromCurrency: (value: FxCurrency) => void;
-  onChangeToCurrency: (value: FxCurrency) => void;
   onTransferFx: () => void | Promise<void>;
 };
 
@@ -23,19 +19,14 @@ function TransferAmountDifC({
   debitAccountId,
   creditAccountId,
   amount,
-  fromCurrency,
-  toCurrency,
   loading,
   error,
   lastRemark,
   onChangeDebitAccountId,
   onChangeCreditAccountId,
   onChangeAmount,
-  onChangeFromCurrency,
-  onChangeToCurrency,
   onTransferFx,
 }: TransferAmountDifCProps) {
-  const currencies: FxCurrency[] = ["SGD", "USD"];
   return (
     <div className="tb-card">
       <h2 className="tb-card-title">
@@ -45,8 +36,9 @@ function TransferAmountDifC({
         Convert automatically using fixed rates: SGD→USD = 0.78, USD→SGD = 1.28.
       </p>
       <p className="tb-card-description">
-        The backend creates 2 TigerBeetle transfers (one per ledger) and stores
-        the FX rate metadata in the transfer&apos;s user_data fields.
+        The backend auto-detects each account&apos;s currency (ledger) and
+        creates 2 TigerBeetle transfers (one per ledger), storing the FX rate
+        metadata in the transfer&apos;s user_data fields.
       </p>
       {error && (
         <div className="tb-alert tb-alert-error" role="alert">
@@ -60,36 +52,6 @@ function TransferAmountDifC({
       )}
 
       <div className="tb-form">
-        <label className="tb-field">
-          <span className="tb-field-label">From Currency (Sender)</span>
-          <select
-            className="tb-input"
-            value={fromCurrency}
-            onChange={(e) => onChangeFromCurrency(e.target.value as FxCurrency)}
-          >
-            {currencies.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="tb-field">
-          <span className="tb-field-label">To Currency (Receiver)</span>
-          <select
-            className="tb-input"
-            value={toCurrency}
-            onChange={(e) => onChangeToCurrency(e.target.value as FxCurrency)}
-          >
-            {currencies.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <label className="tb-field">
           <span className="tb-field-label">Debit Account ID (Sender)</span>
           <input

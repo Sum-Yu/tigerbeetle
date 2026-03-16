@@ -24,8 +24,6 @@ function App() {
   const [transferCurrency, setTransferCurrency] = useState<"SGD" | "USD">(
     "SGD",
   );
-  const [fxFromCurrency, setFxFromCurrency] = useState<"SGD" | "USD">("SGD");
-  const [fxToCurrency, setFxToCurrency] = useState<"SGD" | "USD">("USD");
   const [fxRemark, setFxRemark] = useState<string | null>(null);
   const [fxError, setFxError] = useState<string | null>(null);
   const [topUpAccountId, setTopUpAccountId] = useState("");
@@ -101,8 +99,6 @@ function App() {
         debitAccountId,
         creditAccountId,
         amount,
-        fromCurrency: fxFromCurrency,
-        toCurrency: fxToCurrency,
       });
       setFxRemark(
         `${data.remark} | from=${data.amountFrom} ${data.fromCurrency} -> to=${data.amountTo} ${data.toCurrency}`,
@@ -217,16 +213,12 @@ function App() {
           debitAccountId={debitAccountId}
           creditAccountId={creditAccountId}
           amount={amount}
-          fromCurrency={fxFromCurrency}
-          toCurrency={fxToCurrency}
           loading={loading}
           error={fxError}
           lastRemark={fxRemark}
           onChangeDebitAccountId={setDebitAccountId}
           onChangeCreditAccountId={setCreditAccountId}
           onChangeAmount={setAmount}
-          onChangeFromCurrency={setFxFromCurrency}
-          onChangeToCurrency={setFxToCurrency}
           onTransferFx={createFxTransfer}
         />
 
