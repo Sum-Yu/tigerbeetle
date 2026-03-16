@@ -11,6 +11,10 @@ app.use(cors());
 app.use(express.json());
 app.use("/api/users", userRoutes);
 app.use("/api/pgledger", pgledgerRoutes);
+// Health check
+app.get("/api/health", (_req, res) => {
+    res.json({ ok: true });
+});
 // Configure TigerBeetle client
 const client = createClient({
     cluster_id: BigInt(process.env.TB_CLUSTER_ID ?? 0),
@@ -26,8 +30,41 @@ function currencyToLedger(currency) {
         return CURRENCY_LEDGER.USD;
     return CURRENCY_LEDGER.SGD;
 }
+const FX_RATES = {
+    SGD_USD: { num: 78n, den: 100n }, // 0.78
+    USD_SGD: { num: 128n, den: 100n }, // 1.28
+};
+function fxConvertAmount(amount, fromCurrency, toCurrency) {
+    if (fromCurrency === toCurrency) {
+        return { converted: amount, rate_num: 1n, rate_den: 1n, direction: 0 };
+    }
+    if (fromCurrency === "SGD" && toCurrency === "USD") {
+        const { num, den } = FX_RATES.SGD_USD;
+        return {
+            converted: (amount * num) / den,
+            rate_num: num,
+            rate_den: den,
+            direction: 1,
+        };
+    }
+    if (fromCurrency === "USD" && toCurrency === "SGD") {
+        const { num, den } = FX_RATES.USD_SGD;
+        return {
+            converted: (amount * num) / den,
+            rate_num: num,
+            rate_den: den,
+            direction: 2,
+        };
+    }
+    // Future-proofing if more currencies are added later.
+    throw new Error(`Unsupported FX pair: ${fromCurrency} -> ${toCurrency}`);
+}
+function normalizeCurrency(currency) {
+    const c = (currency || "SGD").toUpperCase();
+    return c === "USD" ? "USD" : "SGD";
+}
 // Treasury account IDs: ledger 1 (SGD) and ledger 2 (USD)
-let TREASURY_ACCOUNT_ID_SGD = process.env.TB_TREASURY_ACCOUNT_ID ?? "2143405532528893555931184785396120149";
+let TREASURY_ACCOUNT_ID_SGD = process.env.TB_TREASURY_ACCOUNT_ID_SGD ?? null;
 let TREASURY_ACCOUNT_ID_USD = process.env.TB_TREASURY_ACCOUNT_ID_USD ?? null;
 async function getOrCreateTreasuryAccountId(ledger) {
     const isSGD = ledger === 1;
@@ -76,40 +113,6 @@ async function getOrCreateTreasuryAccountId(ledger) {
 function jsonifyBigInts(value) {
     return JSON.parse(JSON.stringify(value, (_, v) => typeof v === "bigint" ? v.toString() : v));
 }
-// Health check
-app.get("/api/health", (_req, res) => {
-    res.json({ ok: true });
-});
-// Create a new account
-// app.post("/api/accounts", async (_req, res) => {
-//   try {
-//     const account = {
-//       id: id(),
-//       debits_pending: 0n,
-//       debits_posted: 0n,
-//       credits_pending: 0n,
-//       credits_posted: 0n,
-//       user_data_128: 0n,
-//       user_data_64: 0n,
-//       user_data_32: 0,
-//       reserved: 0,
-//       ledger: 1,
-//       code: 1,
-//       flags: AccountFlags.history | AccountFlags.debits_must_not_exceed_credits,
-//       timestamp: 0n,
-//     };
-//     const errors = await client.createAccounts([account]);
-//     if (errors.length > 0) {
-//       return res.status(400).json({ errors: jsonifyBigInts(errors) });
-//     }
-//     res.json({
-//       accountId: account.id.toString(),
-//     });
-//   } catch (err) {
-//     console.error("Error creating account:", err);
-//     res.status(500).json({ error: "Failed to create account" });
-//   }
-// });
 // Get account info + simple balance
 app.get("/api/accounts/:id", async (req, res) => {
     try {
@@ -165,7 +168,9 @@ app.post("/api/topup", async (req, res) => {
                 .json({ error: "creditAccountId and amount are required" });
         }
         const ledger = currencyToLedger(currency ?? "SGD");
-        const creditAccounts = await client.lookupAccounts([BigInt(creditAccountId)]);
+        const creditAccounts = await client.lookupAccounts([
+            BigInt(creditAccountId),
+        ]);
         if (!creditAccounts?.length) {
             return res.status(404).json({ error: "Credit account not found" });
         }
@@ -204,7 +209,8 @@ app.post("/api/topup", async (req, res) => {
                     message: "Your account does not have enough balance for this transfer.",
                 });
             }
-            if (err.result === CreateTransferError.transfer_must_have_the_same_ledger_as_accounts ||
+            if (err.result ===
+                CreateTransferError.transfer_must_have_the_same_ledger_as_accounts ||
                 err.result === CreateTransferError.accounts_must_have_the_same_ledger) {
                 return res.status(400).json({
                     error: "Currency mismatch",
@@ -260,16 +266,22 @@ app.post("/api/transfers", async (req, res) => {
         const debitAccount = debitAccounts[0];
         if (debitAccount.ledger !== ledger) {
             return res.status(400).json({
-                error: "Debit account is not in the selected currency (ledger). Use an account created for " + (ledger === 1 ? "SGD" : "USD") + ".",
+                error: "Debit account is not in the selected currency (ledger). Use an account created for " +
+                    (ledger === 1 ? "SGD" : "USD") +
+                    ".",
             });
         }
-        const creditAccounts = await client.lookupAccounts([BigInt(creditAccountId)]);
+        const creditAccounts = await client.lookupAccounts([
+            BigInt(creditAccountId),
+        ]);
         if (!creditAccounts || creditAccounts.length === 0) {
             return res.status(404).json({ error: "Credit account not found" });
         }
         if (creditAccounts[0].ledger !== ledger) {
             return res.status(400).json({
-                error: "Credit account is not in the selected currency (ledger). Use an account created for " + (ledger === 1 ? "SGD" : "USD") + ".",
+                error: "Credit account is not in the selected currency (ledger). Use an account created for " +
+                    (ledger === 1 ? "SGD" : "USD") +
+                    ".",
             });
         }
         const balance = debitAccount.credits_posted - debitAccount.debits_posted;
@@ -312,6 +324,137 @@ app.post("/api/transfers", async (req, res) => {
     catch (err) {
         console.error("Error creating transfer:", err);
         res.status(500).json({ error: "Failed to create transfer" });
+    }
+});
+// Create a transfer between two accounts with FX conversion (SGD <-> USD)
+// This is implemented as two TigerBeetle transfers (one per ledger) via treasury accounts.
+app.post("/api/transfers/fx", async (req, res) => {
+    try {
+        const { debitAccountId, creditAccountId, amount, fromCurrency, toCurrency, } = req.body;
+        if (!debitAccountId || !creditAccountId || amount == null) {
+            return res.status(400).json({
+                error: "debitAccountId, creditAccountId and amount are required",
+            });
+        }
+        const amountFrom = BigInt(amount);
+        if (amountFrom <= 0n) {
+            return res.status(400).json({ error: "Amount must be greater than zero" });
+        }
+        const fromC = normalizeCurrency(fromCurrency);
+        const toC = normalizeCurrency(toCurrency);
+        if (fromC === toC) {
+            return res.status(400).json({
+                error: "Currencies must be different for FX transfer",
+                message: "Use /api/transfers for same-currency transfers.",
+            });
+        }
+        const fromLedger = currencyToLedger(fromC);
+        const toLedger = currencyToLedger(toC);
+        const debitAccounts = await client.lookupAccounts([BigInt(debitAccountId)]);
+        if (!debitAccounts?.length) {
+            return res.status(404).json({ error: "Debit account not found" });
+        }
+        const debitAccount = debitAccounts[0];
+        if (debitAccount.ledger !== fromLedger) {
+            return res.status(400).json({
+                error: "Debit account currency mismatch",
+                message: `Debit account must be in ${fromC} (ledger ${fromLedger}).`,
+            });
+        }
+        const creditAccounts = await client.lookupAccounts([
+            BigInt(creditAccountId),
+        ]);
+        if (!creditAccounts?.length) {
+            return res.status(404).json({ error: "Credit account not found" });
+        }
+        const creditAccount = creditAccounts[0];
+        if (creditAccount.ledger !== toLedger) {
+            return res.status(400).json({
+                error: "Credit account currency mismatch",
+                message: `Credit account must be in ${toC} (ledger ${toLedger}).`,
+            });
+        }
+        const postedBalance = debitAccount.credits_posted - debitAccount.debits_posted;
+        if (postedBalance < amountFrom) {
+            return res.status(400).json({
+                error: "Insufficient balance",
+                code: "exceeds_credits",
+                message: `Your ${fromC} account does not have enough balance for this FX transfer.`,
+            });
+        }
+        const { converted: amountTo, rate_num, rate_den, direction } = fxConvertAmount(amountFrom, fromC, toC);
+        if (amountTo <= 0n) {
+            return res.status(400).json({
+                error: "Converted amount is zero",
+                message: "Converted amount became 0 after applying the FX rate. Increase the amount and try again.",
+            });
+        }
+        const rateScaledPpm = (rate_num * 1000000n) / rate_den; // store rate with 6 decimals
+        const treasuryFrom = await getOrCreateTreasuryAccountId(fromLedger);
+        const treasuryTo = await getOrCreateTreasuryAccountId(toLedger);
+        const leg1 = {
+            id: id(),
+            debit_account_id: BigInt(debitAccountId),
+            credit_account_id: BigInt(treasuryFrom),
+            amount: amountFrom,
+            pending_id: 0n,
+            user_data_128: amountTo, // store the "other side" amount
+            user_data_64: rateScaledPpm,
+            user_data_32: direction,
+            timeout: 0,
+            ledger: fromLedger,
+            code: 2, // FX leg (from)
+            flags: 0,
+            timestamp: 0n,
+        };
+        const leg2 = {
+            id: id(),
+            debit_account_id: BigInt(treasuryTo),
+            credit_account_id: BigInt(creditAccountId),
+            amount: amountTo,
+            pending_id: 0n,
+            user_data_128: amountFrom,
+            user_data_64: rateScaledPpm,
+            user_data_32: direction,
+            timeout: 0,
+            ledger: toLedger,
+            code: 3, // FX leg (to)
+            flags: 0,
+            timestamp: 0n,
+        };
+        const errors = await client.createTransfers([leg1, leg2]);
+        if (errors.length > 0) {
+            const err = errors[0];
+            if (err.result === CreateTransferError.exceeds_credits) {
+                return res.status(400).json({
+                    error: "Insufficient balance",
+                    code: "exceeds_credits",
+                    message: "One side of the FX transfer did not have enough balance (either the sender or the treasury liquidity account).",
+                    errors: jsonifyBigInts(errors),
+                });
+            }
+            return res.status(400).json({
+                error: "FX transfer failed",
+                errors: jsonifyBigInts(errors),
+            });
+        }
+        return res.json({
+            fromCurrency: fromC,
+            toCurrency: toC,
+            amountFrom: amountFrom.toString(),
+            amountTo: amountTo.toString(),
+            rate: `${rate_num.toString()}/${rate_den.toString()}`,
+            rateScaledPpm: rateScaledPpm.toString(),
+            remark: `FX ${fromC}->${toC} rate=${(Number(rateScaledPpm) / 1_000_000).toFixed(6)}`,
+            transferIds: {
+                fromLedgerTransferId: leg1.id.toString(),
+                toLedgerTransferId: leg2.id.toString(),
+            },
+        });
+    }
+    catch (err) {
+        console.error("Error creating FX transfer:", err);
+        return res.status(500).json({ error: "Failed to create FX transfer" });
     }
 });
 app.listen(PORT, () => {

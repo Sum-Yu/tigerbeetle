@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import "./App.css";
 import {
   createAccountApi,
+  createFxTransferApi,
   createTransferApi,
   fetchAccountAndHistoryApi,
   topUpAccountApi,
@@ -11,6 +12,7 @@ import {
 } from "./api/tigerbeetle";
 import CreateAcc from "./components/createAcc";
 import TransferAmount from "./components/transferAmount";
+import TransferAmountDifC from "./components/transferAmountDifC";
 import TopUpAmount from "./components/topUpAmount";
 import UserList from "./components/userList";
 
@@ -19,7 +21,13 @@ function App() {
   const [debitAccountId, setDebitAccountId] = useState("");
   const [creditAccountId, setCreditAccountId] = useState("");
   const [amount, setAmount] = useState("0");
-  const [transferCurrency, setTransferCurrency] = useState<"SGD" | "USD">("SGD");
+  const [transferCurrency, setTransferCurrency] = useState<"SGD" | "USD">(
+    "SGD",
+  );
+  const [fxFromCurrency, setFxFromCurrency] = useState<"SGD" | "USD">("SGD");
+  const [fxToCurrency, setFxToCurrency] = useState<"SGD" | "USD">("USD");
+  const [fxRemark, setFxRemark] = useState<string | null>(null);
+  const [fxError, setFxError] = useState<string | null>(null);
   const [topUpAccountId, setTopUpAccountId] = useState("");
   const [topUpAmount, setTopUpAmount] = useState("0");
   const [topUpCurrency, setTopUpCurrency] = useState<"SGD" | "USD">("SGD");
@@ -29,11 +37,12 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
+  const [topUpError, setTopUpError] = useState<string | null>(null);
 
   async function createAccount(
     email: string,
     name?: string,
-    currency?: "SGD" | "USD"
+    currency?: "SGD" | "USD",
   ) {
     setError(null);
     setLoading(true);
@@ -82,6 +91,34 @@ function App() {
     }
   }
 
+  async function createFxTransfer() {
+    setError(null);
+    setFxError(null);
+    setFxRemark(null);
+    setLoading(true);
+    try {
+      const data = await createFxTransferApi({
+        debitAccountId,
+        creditAccountId,
+        amount,
+        fromCurrency: fxFromCurrency,
+        toCurrency: fxToCurrency,
+      });
+      setFxRemark(
+        `${data.remark} | from=${data.amountFrom} ${data.fromCurrency} -> to=${data.amountTo} ${data.toCurrency}`,
+      );
+      if (lookupAccountId) {
+        void fetchAccountAndHistory(lookupAccountId);
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Unknown error";
+      setFxError(message);
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function topUpAccount() {
     setError(null);
     setLoading(true);
@@ -96,7 +133,7 @@ function App() {
         void fetchAccountAndHistory(topUpAccountId);
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setTopUpError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -160,6 +197,7 @@ function App() {
           onChangeAmount={setTopUpAmount}
           onChangeCurrency={setTopUpCurrency}
           onTopUp={topUpAccount}
+          topUpError={topUpError}
         />
         <h1 className="text-2xl font-bold ml-2">Step 3: Transfer Amount</h1>
         <TransferAmount
@@ -174,6 +212,22 @@ function App() {
           onChangeAmount={setAmount}
           onChangeCurrency={setTransferCurrency}
           onTransferAmount={createTransfer}
+        />
+        <TransferAmountDifC
+          debitAccountId={debitAccountId}
+          creditAccountId={creditAccountId}
+          amount={amount}
+          fromCurrency={fxFromCurrency}
+          toCurrency={fxToCurrency}
+          loading={loading}
+          error={fxError}
+          lastRemark={fxRemark}
+          onChangeDebitAccountId={setDebitAccountId}
+          onChangeCreditAccountId={setCreditAccountId}
+          onChangeAmount={setAmount}
+          onChangeFromCurrency={setFxFromCurrency}
+          onChangeToCurrency={setFxToCurrency}
+          onTransferFx={createFxTransfer}
         />
 
         <section className="tb-card tb-card-wide">

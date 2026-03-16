@@ -11,6 +11,7 @@ type TopUpAmountProps = {
   onChangeAmount: (value: string) => void;
   onChangeCurrency: (value: TopUpCurrency) => void;
   onTopUp: () => void | Promise<void>;
+  topUpError: string | null;
 };
 
 function TopUpAmount({
@@ -22,6 +23,7 @@ function TopUpAmount({
   onChangeAmount,
   onChangeCurrency,
   onTopUp,
+  topUpError,
 }: TopUpAmountProps) {
   return (
     <>
@@ -42,7 +44,9 @@ function TopUpAmount({
             <select
               className="tb-input"
               value={currency}
-              onChange={(e) => onChangeCurrency(e.target.value as TopUpCurrency)}
+              onChange={(e) =>
+                onChangeCurrency(e.target.value as TopUpCurrency)
+              }
             >
               <option value="SGD">SGD (Singapore)</option>
               <option value="USD">USD</option>
@@ -74,6 +78,9 @@ function TopUpAmount({
           >
             {loading ? "Working..." : "Add Amount"}
           </button>
+          {topUpError && (
+            <p className="tb-alert tb-alert-error">{topUpError}</p>
+          )}
         </div>
       </div>
     </>

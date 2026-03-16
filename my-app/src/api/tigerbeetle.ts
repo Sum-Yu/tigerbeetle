@@ -77,6 +77,56 @@ export async function createTransferApi(input: {
   await res.json().catch(() => undefined);
 }
 
+export async function createFxTransferApi(input: {
+  debitAccountId: string;
+  creditAccountId: string;
+  amount: string;
+  fromCurrency: "SGD" | "USD";
+  toCurrency: "SGD" | "USD";
+}): Promise<{
+  fromCurrency: "SGD" | "USD";
+  toCurrency: "SGD" | "USD";
+  amountFrom: string;
+  amountTo: string;
+  remark: string;
+  transferIds: { fromLedgerTransferId: string; toLedgerTransferId: string };
+}> {
+  const res = await fetch(`${API_BASE_URL}/transfers/fx`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  const body = (await res.json().catch(() => ({}))) as
+    | {
+        error?: string;
+        message?: string;
+      }
+    | {
+        fromCurrency: "SGD" | "USD";
+        toCurrency: "SGD" | "USD";
+        amountFrom: string;
+        amountTo: string;
+        remark: string;
+        transferIds: {
+          fromLedgerTransferId: string;
+          toLedgerTransferId: string;
+        };
+      };
+
+  if (!res.ok) {
+    if ("error" in body) {
+      throw new Error(body.message || body.error || "Failed to create FX transfer");
+    }
+    throw new Error("Failed to create FX transfer");
+  }
+
+  if (!("transferIds" in body)) {
+    throw new Error("FX transfer response was not in expected format");
+  }
+  return body;
+}
+
 export async function topUpAccountApi(input: {
   creditAccountId: string;
   amount: string;

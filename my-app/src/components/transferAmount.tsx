@@ -31,9 +31,10 @@ function TransferAmount({
 }: TransferAmountProps) {
   return (
     <div className="tb-card">
-      <h2 className="tb-card-title">Create Transfer</h2>
+      <h2 className="tb-card-title">Create Transfer (Same Currency)</h2>
       <p className="tb-card-description">
-        Move funds between two accounts in a single transfer. Ledger 1 = SGD (Singapore), Ledger 2 = USD.
+        Move funds between two accounts in a single transfer. Ledger 1 = SGD
+        (Singapore), Ledger 2 = USD.
       </p>
       {error && (
         <div className="tb-alert tb-alert-error" role="alert">
@@ -46,7 +47,9 @@ function TransferAmount({
           <select
             className="tb-input"
             value={currency}
-            onChange={(e) => onChangeCurrency(e.target.value as TransferCurrency)}
+            onChange={(e) =>
+              onChangeCurrency(e.target.value as TransferCurrency)
+            }
           >
             <option value="SGD">SGD (Singapore)</option>
             <option value="USD">USD</option>
@@ -87,7 +90,6 @@ function TransferAmount({
         >
           {loading ? "Working..." : "Submit Transfer"}
         </button>
-    
       </div>
     </div>
   );
